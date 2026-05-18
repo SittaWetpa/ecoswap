@@ -2,6 +2,8 @@
 
 This file tells Claude Code (and any AI coding assistant) how to work in this repo.
 
+> **For human team members:** read [`docs/TEAM_SETUP_GUIDE.md`](docs/TEAM_SETUP_GUIDE.md) instead. This file is structured for AI consumption.
+
 ---
 
 ## What this repo contains
