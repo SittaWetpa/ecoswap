@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EcoSwap — Setup Step 2 States</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green-primary: #1D9E75;
+    --green-dark: #0F6E56;
+    --green-soft: #E1F5EE;
+    --surface: #FFFFFF;
+    --surface-alt: #F7F5F0;
+    --border: #E5E5E0;
+    --text-primary: #1A1A1A;
+    --text-secondary: #6B6B66;
+    --text-tertiary: #A0A09B;
+    --danger: #C44545;
+    --danger-soft: #FCEBEB;
+    --warning: #BA7517;
+    --info: #185FA5;
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.06);
+    --shadow-modal: 0 8px 24px rgba(0,0,0,0.12);
+    --density: 1;
+  }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: 'Inter', 'Noto Sans Thai', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #ECEAE3;
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  * { box-sizing: border-box; }
+  button { font-family: inherit; cursor: pointer; }
+  input, textarea { font-family: inherit; }
+  .phone-scroll::-webkit-scrollbar { display: none; }
+  .phone-scroll { scrollbar-width: none; }
+
+  /* Stage */
+  #stage {
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    padding: 48px 24px 64px;
+  }
+  .canvas-title {
+    font-size: 13px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--text-tertiary); margin-bottom: 8px;
+  }
+  .canvas-h1 {
+    font-size: 28px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 8px;
+  }
+  .canvas-sub {
+    font-size: 15px; color: var(--text-secondary); margin: 0 0 40px; max-width: 720px;
+  }
+  .frames-row {
+    display: flex; gap: 64px; justify-content: center; align-items: flex-start; flex-wrap: wrap;
+  }
+  .frame-col {
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+  }
+  .frame-label-block {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: 410px;
+  }
+  .frame-tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-tertiary);
+  }
+  .frame-name {
+    font-size: 18px; font-weight: 600; color: var(--text-primary);
+  }
+  .frame-desc {
+    font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+  <div id="stage">
+    <div class="canvas-title">Profile setup · step 2 of 3</div>
+    <h1 class="canvas-h1">Area picker — Searching & Selected</h1>
+    <p class="canvas-sub">Two visual states for the district search. State A shows the open dropdown with the first row in its selected appearance; State B replaces the input with a confirmation card once a district is picked.</p>
+    <div id="root"></div>
+  </div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="src/android-frame.jsx"></script>
+  <script type="text/babel" src="src/data.jsx"></script>
+  <script type="text/babel" src="src/icons.jsx"></script>
+  <script type="text/babel" src="src/ui.jsx"></script>
+  <script type="text/babel" src="src/screens/setup.jsx"></script>
+
+  <script type="text/babel">
+    const { PhoneFrame, TopBar, Button } = window;
+    const { AreaSearching, AreaSelected, Dots, AMPHOE } = window;
+
+    const BANG_MOD = AMPHOE[0]; // บางมด · Bang Mod, Bangkok
+
+    const Step2Shell = ({ children, nextDisabled }) => (
+      <PhoneFrame>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--surface)' }}>
+          <TopBar variant="hier" onBack={() => {}} />
+          <div style={{ padding: '0 16px 8px' }}><Dots step={1} /></div>
+          <div className="phone-scroll" style={{ flex: 1, overflow: 'auto', padding: '32px 16px 16px', display: 'flex', flexDirection: 'column', gap: 0 }}>
+            <div>
+              <div style={{ fontSize: 24, fontWeight: 600, lineHeight: 1.25 }}>Where are you based?</div>
+              <div style={{ marginTop: 8, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                We only show your district to others, never your exact location.
+              </div>
+            </div>
+            <div style={{ marginTop: 24 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 12 }}>Your area</div>
+              {children}
+            </div>
+          </div>
+          <div style={{ padding: 16, borderTop: '1px solid var(--border)' }}>
+            <Button disabled={nextDisabled} onClick={() => {}}>Next</Button>
+          </div>
+        </div>
+      </PhoneFrame>
+    );
+
+    const App = () => {
+      return (
+        <div className="frames-row">
+          <div className="frame-col">
+            <div className="frame-label-block">
+              <div className="frame-tag">State A</div>
+              <div className="frame-name">Searching</div>
+              <div className="frame-desc">Open dropdown with first row previewing the selected appearance. Next button disabled until a district is picked.</div>
+            </div>
+            <Step2Shell nextDisabled={true}>
+              <AreaSearching
+                query=""
+                onQuery={() => {}}
+                onPick={() => {}}
+              />
+            </Step2Shell>
+          </div>
+          <div className="frame-col">
+            <div className="frame-label-block">
+              <div className="frame-tag">State B</div>
+              <div className="frame-name">Selected</div>
+              <div className="frame-desc">Confirmation card replaces the search input. Info note clarifies the radius. Next button enabled.</div>
+            </div>
+            <Step2Shell nextDisabled={false}>
+              <AreaSelected value={BANG_MOD} onChange={() => {}} />
+            </Step2Shell>
+          </div>
+        </div>
+      );
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
