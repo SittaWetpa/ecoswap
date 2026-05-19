@@ -40,6 +40,7 @@ dependencies:
   # packages (firebase_auth, cloud_firestore, firebase_storage,
   # cloud_functions) are added in their respective WBS entries (3.3, 3.6, etc.).
   firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
 
 dev_dependencies:
   flutter_test:
