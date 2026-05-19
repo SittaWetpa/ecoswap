@@ -207,6 +207,23 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Materialize google-services.json from secret
+        # google-services.json is .gitignore'd (Firebase config; project-specific).
+        # The owner must set GOOGLE_SERVICES_JSON_B64 once in repo secrets:
+        #   base64 google-services.json | tr -d '\n'  →  paste as secret value.
+        env:
+          GS_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          if [ -z "$GS_B64" ]; then
+            echo "::error::Repo secret GOOGLE_SERVICES_JSON_B64 is not set."
+            echo "Owner: download google-services.json from the Firebase Console"
+            echo "(Project Settings → Your apps → Android), then run"
+            echo "'base64 google-services.json | tr -d \"\\n\"' and paste the"
+            echo "result into a repo secret named GOOGLE_SERVICES_JSON_B64."
+            exit 1
+          fi
+          echo "$GS_B64" | base64 -d > android/app/google-services.json
+
       - name: Build debug APK
         # DEV_MODE=false explicitly — never ship a debug APK with the paste path enabled
         run: flutter build apk --debug --dart-define=DEV_MODE=false
