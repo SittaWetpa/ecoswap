@@ -8,20 +8,35 @@
     "node": "20"
   },
   "scripts": {
+    "lint": "eslint --ext .js,.ts src test",
     "build": "tsc",
-    "lint": "echo \"lint placeholder — configured in WBS 3.5\"",
+    "build:watch": "tsc --watch",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "shell": "npm run build && firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log",
     "test": "firebase emulators:exec --only storage --project demo-ecoswap \"jest --runInBand\"",
     "test:ci": "firebase emulators:exec --only storage --project demo-ecoswap \"jest --runInBand --ci --coverage\"",
-    "test:rules": "firebase emulators:exec --only storage --project demo-ecoswap \"jest --runInBand\"",
-    "test:no-emulator": "jest --runInBand"
+    "test:rules": "firebase emulators:exec --only storage --project demo-ecoswap \"jest --runInBand --testPathPattern=storage.rules\"",
+    "test:no-emulator": "jest --runInBand --testPathIgnorePatterns=storage.rules"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.6.0",
+    "firebase-functions": "^7.0.0"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^3.0.4",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.11.30",
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "@typescript-eslint/parser": "^5.62.0",
+    "eslint": "^8.57.1",
+    "eslint-config-google": "^0.14.0",
+    "eslint-plugin-import": "^2.25.4",
     "firebase": "^10.12.2",
-    "firebase-admin": "^12.0.0",
-    "firebase-tools": "^15.18.0",
+    "firebase-functions-test": "^3.4.1",
+    "firebase-tools": "^13.23.0",
     "jest": "^29.7.0",
     "ts-jest": "^29.1.2",
     "typescript": "^5.4.5"
