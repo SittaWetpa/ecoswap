@@ -1,0 +1,33 @@
+rules_version = '2';
+
+// Cloud Storage security rules — WBS 3.4
+//
+// Path convention (locked, per WBS 3.4 Deliverables):
+//   /user_photos/{uid}.jpg     — one photo per user, filename equals their uid
+//   /item_photos/{itemId}.jpg  — one photo per item, filename equals the itemId
+//
+// The Firebase Storage rules grammar does not accept a literal extension
+// inside a single path placeholder (i.e. `match /user_photos/{uid}.jpg`
+// fails to parse: "Unexpected '.'"). The functionally equivalent form below
+// binds the whole filename as a placeholder and enforces the `<uid>.jpg`
+// shape inside the condition. The path convention on the bucket is
+// unchanged.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /user_photos/{filename} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && filename == request.auth.uid + '.jpg'
+                   && request.resource.size < 2 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    match /item_photos/{filename} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && filename.matches('.*\\.jpg')
+                   && request.resource.size < 2 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+  }
+}
