@@ -19,7 +19,7 @@ concurrency:
 env:
   FLUTTER_VERSION: '3.44.0'
   NODE_VERSION: '20'
-  JAVA_VERSION: '17'
+  JAVA_VERSION: '21'
 
 jobs:
   # ─────────────────────────────────────────────────────────────────
@@ -74,6 +74,11 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: functions/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
 
       - name: Install dependencies
         run: npm ci
