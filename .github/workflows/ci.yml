@@ -17,9 +17,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FLUTTER_VERSION: '3.24.0'
+  FLUTTER_VERSION: '3.44.0'
   NODE_VERSION: '20'
-  JAVA_VERSION: '17'
+  JAVA_VERSION: '21'
 
 jobs:
   # ─────────────────────────────────────────────────────────────────
@@ -75,6 +75,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: functions/package-lock.json
 
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
       - name: Install dependencies
         run: npm ci
 
@@ -85,7 +90,7 @@ jobs:
         run: npm run build
 
       - name: Unit tests (Jest)
-        run: npm test -- --ci --coverage
+        run: npm run test:ci
 
       - name: Upload coverage as artifact
         if: always()
@@ -201,6 +206,23 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Materialize google-services.json from secret
+        # google-services.json is .gitignore'd (Firebase config; project-specific).
+        # The owner must set GOOGLE_SERVICES_JSON_B64 once in repo secrets:
+        #   base64 google-services.json | tr -d '\n'  →  paste as secret value.
+        env:
+          GS_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          if [ -z "$GS_B64" ]; then
+            echo "::error::Repo secret GOOGLE_SERVICES_JSON_B64 is not set."
+            echo "Owner: download google-services.json from the Firebase Console"
+            echo "(Project Settings → Your apps → Android), then run"
+            echo "'base64 google-services.json | tr -d \"\\n\"' and paste the"
+            echo "result into a repo secret named GOOGLE_SERVICES_JSON_B64."
+            exit 1
+          fi
+          echo "$GS_B64" | base64 -d > android/app/google-services.json
 
       - name: Build debug APK
         # DEV_MODE=false explicitly — never ship a debug APK with the paste path enabled
