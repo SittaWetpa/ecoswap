@@ -11,6 +11,7 @@
     "build": "tsc",
     "lint": "echo \"lint placeholder — configured in WBS 3.5\"",
     "test": "firebase emulators:exec --only storage --project demo-ecoswap \"jest --runInBand\"",
+    "test:ci": "firebase emulators:exec --only storage --project demo-ecoswap \"jest --runInBand --ci --coverage\"",
     "test:rules": "firebase emulators:exec --only storage --project demo-ecoswap \"jest --runInBand\"",
     "test:no-emulator": "jest --runInBand"
   },
