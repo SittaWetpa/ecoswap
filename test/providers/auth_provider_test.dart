@@ -33,6 +33,8 @@ class _FakeFirebaseAuth extends Fake implements firebase_auth.FirebaseAuth {
     _controller.add(null);
   }
 
+  bool signOutCalled = false;
+
   void dispose() {
     _controller.close();
   }
@@ -42,6 +44,12 @@ class _FakeFirebaseAuth extends Fake implements firebase_auth.FirebaseAuth {
 
   @override
   Stream<firebase_auth.User?> authStateChanges() => _controller.stream;
+
+  @override
+  Future<void> signOut() async {
+    signOutCalled = true;
+    emitSignOut();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -166,6 +174,24 @@ void main() {
 
       expect(provider.currentUser, isNotNull);
       expect(provider.currentUser!.uid, equals('test-uid'));
+    });
+
+    // -------------------------------------------------------------------------
+    // Test 5: AuthProvider.signOut() delegates to FirebaseAuth.signOut().
+    // -------------------------------------------------------------------------
+    test('signOut() delegates to FirebaseAuth.signOut()', () async {
+      final provider =
+          auth_prov.AuthProvider(firebaseAuth: fakeAuth);
+      addTearDown(provider.dispose);
+
+      expect(fakeAuth.signOutCalled, isFalse);
+
+      await provider.signOut();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(fakeAuth.signOutCalled, isTrue);
+      // provider should also clear its currentUser via the stream event
+      expect(provider.currentUser, isNull);
     });
   });
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../services/auth_service.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart' as auth_prov;
 
 // Design tokens
 const _kDangerSoft = Color(0xFFFCEBEB);
@@ -9,15 +10,15 @@ const _kDanger = Color(0xFFC44545);
 ///
 /// WBS 4.3 owns the logout button and confirmation dialog only.
 /// The full profile UI is implemented in WBS 5.4.
-///
-/// The [authService] parameter is optional so production usage can omit it
-/// (defaults to a fresh [AuthService]) while tests inject a stub.
 class ProfileScreen extends StatelessWidget {
-  final AuthService? authService;
-
-  const ProfileScreen({super.key, this.authService});
+  const ProfileScreen({super.key});
 
   void _showLogoutDialog(BuildContext context) {
+    // Capture the provider before the async gap so we don't call
+    // context.read inside an async callback (which can fail if the
+    // widget is unmounted by the time the dialog resolves).
+    final authProvider = context.read<auth_prov.AuthProvider>();
+
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
@@ -33,7 +34,7 @@ class ProfileScreen extends StatelessWidget {
           TextButton(
             onPressed: () async {
               Navigator.pop(context); // close dialog first
-              await (authService ?? AuthService()).signOut();
+              await authProvider.signOut();
               // Route guard in app.dart handles redirect to LoginScreen
             },
             style: TextButton.styleFrom(foregroundColor: _kDanger),
