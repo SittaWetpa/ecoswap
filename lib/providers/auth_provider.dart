@@ -42,4 +42,13 @@ class AuthProvider extends ChangeNotifier {
   /// a [Consumer].  Delegates to [FirebaseAuth.authStateChanges] so
   /// listeners receive events immediately on subscription.
   Stream<User?> get authStateChanges => _auth.authStateChanges();
+
+  /// Signs the current user out.
+  ///
+  /// This is the **only** place in the Flutter app that calls
+  /// [FirebaseAuth.instance.signOut] directly.  Screens must call this
+  /// method rather than reaching into [FirebaseAuth] themselves.
+  Future<void> signOut() async {
+    await _auth.signOut();
+  }
 }
