@@ -97,6 +97,10 @@ class AuthService {
     }
   }
 
+  Future<void> signOut() async {
+    await _auth.signOut();
+  }
+
   Future<firebase_auth.User> signIn(String email, String password) async {
     // Client-side validation before calling Firebase
     if (!_emailRegex.hasMatch(email)) {

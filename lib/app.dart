@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/profile/profile_screen.dart';
 
 // Design token
 const _kGreenPrimary = Color(0xFF1D9E75);
@@ -28,10 +29,8 @@ class EcoSwapApp extends StatelessWidget {
             );
           }
           if (snapshot.hasData) {
-            // Logged-in: show Discover placeholder (implemented in WBS 7.x)
-            return const Scaffold(
-              body: Center(child: Text('Discover — coming soon')),
-            );
+            // Logged-in: show Profile screen (Discover placeholder replaced by WBS 7.x)
+            return const ProfileScreen();
           }
           // Not logged in: show login screen (entry point to auth flow)
           return const LoginScreen();
