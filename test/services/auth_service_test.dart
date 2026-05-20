@@ -23,6 +23,7 @@ class _MockUserCredential extends Fake
 
 class _MockFirebaseAuth extends Fake implements firebase_auth.FirebaseAuth {
   bool createUserCalled = false;
+  bool signInCalled = false;
   firebase_auth.FirebaseAuthException? errorToThrow;
 
   @override
@@ -31,6 +32,16 @@ class _MockFirebaseAuth extends Fake implements firebase_auth.FirebaseAuth {
     required String password,
   }) async {
     createUserCalled = true;
+    if (errorToThrow != null) throw errorToThrow!;
+    return _MockUserCredential();
+  }
+
+  @override
+  Future<firebase_auth.UserCredential> signInWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {
+    signInCalled = true;
     if (errorToThrow != null) throw errorToThrow!;
     return _MockUserCredential();
   }
@@ -168,6 +179,111 @@ void main() {
             (e) => e.message,
             'message',
             equals('Something went wrong. Please try again.'),
+          ),
+        ),
+      );
+    });
+  });
+
+  group('AuthService.signIn()', () {
+    late _MockFirebaseAuth mockAuth;
+
+    /// Builds a service — signIn does not write Firestore, so writer is a no-op.
+    AuthService makeService() {
+      return AuthService(
+        auth: mockAuth,
+        userDocWriter: (uid, data) async {},
+      );
+    }
+
+    setUp(() {
+      mockAuth = _MockFirebaseAuth();
+    });
+
+    test('valid email + correct password returns User', () async {
+      final service = makeService();
+      final user = await service.signIn('test@example.com', 'password123');
+
+      expect(user.uid, equals('test-uid-123'));
+      expect(mockAuth.signInCalled, isTrue);
+    });
+
+    test(
+        'wrong-password Firebase code throws WrongPasswordException', () async {
+      mockAuth.errorToThrow = firebase_auth.FirebaseAuthException(
+        code: 'wrong-password',
+      );
+      final service = makeService();
+
+      await expectLater(
+        () => service.signIn('test@example.com', 'wrongpass'),
+        throwsA(
+          isA<WrongPasswordException>().having(
+            (e) => e.message,
+            'message',
+            equals('Incorrect password. Please try again.'),
+          ),
+        ),
+      );
+    });
+
+    test(
+        'invalid-credential Firebase code throws WrongPasswordException',
+        () async {
+      mockAuth.errorToThrow = firebase_auth.FirebaseAuthException(
+        code: 'invalid-credential',
+      );
+      final service = makeService();
+
+      await expectLater(
+        () => service.signIn('test@example.com', 'wrongpass'),
+        throwsA(isA<WrongPasswordException>()),
+      );
+    });
+
+    test(
+        'invalid email format throws InvalidEmailException, '
+        'Firebase NOT called', () async {
+      final service = makeService();
+
+      await expectLater(
+        () => service.signIn('not-an-email', 'password123'),
+        throwsA(isA<InvalidEmailException>()),
+      );
+      expect(mockAuth.signInCalled, isFalse);
+    });
+
+    test('user-not-found maps to friendly AuthException', () async {
+      mockAuth.errorToThrow = firebase_auth.FirebaseAuthException(
+        code: 'user-not-found',
+      );
+      final service = makeService();
+
+      await expectLater(
+        () => service.signIn('test@example.com', 'password123'),
+        throwsA(
+          isA<AuthException>().having(
+            (e) => e.message,
+            'message',
+            equals('No account found with this email.'),
+          ),
+        ),
+      );
+    });
+
+    test('network-request-failed maps to friendly AuthException', () async {
+      mockAuth.errorToThrow = firebase_auth.FirebaseAuthException(
+        code: 'network-request-failed',
+      );
+      final service = makeService();
+
+      await expectLater(
+        () => service.signIn('test@example.com', 'password123'),
+        throwsA(
+          isA<AuthException>().having(
+            (e) => e.message,
+            'message',
+            equals('Network error. Please check your connection.'),
           ),
         ),
       );
