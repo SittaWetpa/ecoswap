@@ -16,6 +16,11 @@ class AuthException implements Exception {
   const AuthException(this.message);
 }
 
+class WrongPasswordException implements Exception {
+  final String message;
+  const WrongPasswordException(this.message);
+}
+
 /// Typedef for the Firestore user-doc write so tests can inject a simple
 /// closure instead of trying to fake the sealed FirebaseFirestore hierarchy.
 typedef UserDocWriter = Future<void> Function(
@@ -83,6 +88,35 @@ class AuthService {
         case 'email-already-in-use':
           throw const AuthException(
               'An account with this email already exists.');
+        case 'network-request-failed':
+          throw const AuthException(
+              'Network error. Please check your connection.');
+        default:
+          throw const AuthException('Something went wrong. Please try again.');
+      }
+    }
+  }
+
+  Future<firebase_auth.User> signIn(String email, String password) async {
+    // Client-side validation before calling Firebase
+    if (!_emailRegex.hasMatch(email)) {
+      throw const InvalidEmailException('Please enter a valid email address.');
+    }
+
+    try {
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      return credential.user!;
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'wrong-password':
+        case 'invalid-credential':
+          throw const WrongPasswordException(
+              'Incorrect password. Please try again.');
+        case 'user-not-found':
+          throw const AuthException('No account found with this email.');
         case 'network-request-failed':
           throw const AuthException(
               'Network error. Please check your connection.');
