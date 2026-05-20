@@ -124,6 +124,9 @@ void main() {
       // SharedPreferences has the persisted key.
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString(ProximityFilterSheet.prefKey), 'thailand');
+
+      // Sheet is dismissed after tapping an option.
+      expect(find.text('Show me swappers in…'), findsNothing);
     });
 
     testWidgets('calls onChanged with sameDistrict when that row is tapped',
@@ -246,6 +249,70 @@ void main() {
 
       // There should be exactly one check icon (the selected row).
       expect(find.byIcon(Icons.check), findsOneWidget);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 5b. Changing filter triggers feed reload via onChanged (FeedService wiring)
+  // -------------------------------------------------------------------------
+  group('ProximityFilterSheet — FeedService wiring', () {
+    testWidgets(
+        'onChanged is called with new bucket so caller can invoke candidatesForUser',
+        (tester) async {
+      // Simulate what DiscoverScreen does: on onChanged, call
+      // FeedService.candidatesForUser() with the new bucket.
+      final calledWithBuckets = <ProximityBucket>[];
+
+      // _FakeFeedService records which buckets candidatesForUser was called with.
+      Future<void> fakeCandidatesForUser(ProximityBucket bucket) async {
+        calledWithBuckets.add(bucket);
+      }
+
+      await _showSheet(
+        tester,
+        current: ProximityBucket.sameProvince,
+        onChanged: (b) => fakeCandidatesForUser(b),
+      );
+
+      await tester.tap(find.text('Nearby provinces'));
+      await tester.pumpAndSettle();
+
+      // candidatesForUser was called exactly once with the new bucket.
+      expect(calledWithBuckets, hasLength(1));
+      expect(calledWithBuckets.first, ProximityBucket.nearbyProvinces);
+    });
+
+    testWidgets(
+        'selecting a different option each time triggers a new candidatesForUser call',
+        (tester) async {
+      final calledWithBuckets = <ProximityBucket>[];
+
+      Future<void> fakeCandidatesForUser(ProximityBucket bucket) async {
+        calledWithBuckets.add(bucket);
+      }
+
+      // First open: pick sameDistrict
+      await _showSheet(
+        tester,
+        current: ProximityBucket.allThailand,
+        onChanged: (b) => fakeCandidatesForUser(b),
+      );
+      await tester.tap(find.text('Same district'));
+      await tester.pumpAndSettle();
+
+      // Second open: pick allThailand
+      await _showSheet(
+        tester,
+        current: ProximityBucket.sameDistrict,
+        onChanged: (b) => fakeCandidatesForUser(b),
+      );
+      await tester.tap(find.text('All Thailand'));
+      await tester.pumpAndSettle();
+
+      expect(calledWithBuckets, [
+        ProximityBucket.sameDistrict,
+        ProximityBucket.allThailand,
+      ]);
     });
   });
 

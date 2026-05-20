@@ -271,6 +271,7 @@ class ProximityFilterSheet extends StatelessWidget {
             onTap: () {
               saveProximityBucket(opt.bucket);
               onChanged(opt.bucket);
+              Navigator.of(context).pop();
             },
           );
         }).toList(),
