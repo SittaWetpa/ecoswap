@@ -24,6 +24,7 @@ class _MockUserCredential extends Fake
 class _MockFirebaseAuth extends Fake implements firebase_auth.FirebaseAuth {
   bool createUserCalled = false;
   bool signInCalled = false;
+  bool signOutCalled = false;
   firebase_auth.FirebaseAuthException? errorToThrow;
 
   @override
@@ -44,6 +45,11 @@ class _MockFirebaseAuth extends Fake implements firebase_auth.FirebaseAuth {
     signInCalled = true;
     if (errorToThrow != null) throw errorToThrow!;
     return _MockUserCredential();
+  }
+
+  @override
+  Future<void> signOut() async {
+    signOutCalled = true;
   }
 }
 
@@ -287,6 +293,27 @@ void main() {
           ),
         ),
       );
+    });
+  });
+
+  group('AuthService.signOut()', () {
+    late _MockFirebaseAuth mockAuth;
+
+    AuthService makeService() {
+      return AuthService(
+        auth: mockAuth,
+        userDocWriter: (uid, data) async {},
+      );
+    }
+
+    setUp(() {
+      mockAuth = _MockFirebaseAuth();
+    });
+
+    test('signOut() delegates to FirebaseAuth.signOut()', () async {
+      final service = makeService();
+      await service.signOut();
+      expect(mockAuth.signOutCalled, isTrue);
     });
   });
 }

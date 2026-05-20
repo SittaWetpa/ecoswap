@@ -10,7 +10,7 @@ class _FakeUser extends Fake implements User {}
 void main() {
   group('EcoSwapApp route guard', () {
     testWidgets(
-        'shows Discover placeholder when authStateStream emits a non-null User',
+        'shows ProfileScreen when authStateStream emits a non-null User',
         (tester) async {
       await tester.pumpWidget(
         EcoSwapApp(authStateStream: Stream.value(_FakeUser())),
@@ -18,7 +18,8 @@ void main() {
       // Let the StreamBuilder settle
       await tester.pump();
 
-      expect(find.text('Discover — coming soon'), findsOneWidget);
+      // ProfileScreen is shown — the placeholder body text is visible
+      expect(find.text('Profile — coming soon'), findsOneWidget);
     });
 
     testWidgets(
