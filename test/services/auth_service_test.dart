@@ -15,8 +15,7 @@ class _MockUser extends Fake implements firebase_auth.User {
   String? get email => 'test@example.com';
 }
 
-class _MockUserCredential extends Fake
-    implements firebase_auth.UserCredential {
+class _MockUserCredential extends Fake implements firebase_auth.UserCredential {
   @override
   firebase_auth.User? get user => _MockUser();
 }
@@ -80,8 +79,7 @@ void main() {
       mockAuth = _MockFirebaseAuth();
     });
 
-    test(
-        'valid email + 8+ char password creates user and writes Firestore doc '
+    test('valid email + 8+ char password creates user and writes Firestore doc '
         'with tradesCount=0, totalCo2Saved=0, totalWasteDiverted=0', () async {
       final service = makeService();
       final user = await service.signUp('test@example.com', 'password123');
@@ -102,16 +100,23 @@ void main() {
       expect(data['createdAt'], isNotNull);
       // homeDistrict sub-object has all 6 string fields
       final homeDistrict = data['homeDistrict'] as Map<String, dynamic>;
-      expect(homeDistrict.keys.toSet(),
-          equals({'provinceId', 'provinceNameTh', 'provinceNameEn',
-                  'districtId', 'districtNameTh', 'districtNameEn'}));
+      expect(
+        homeDistrict.keys.toSet(),
+        equals({
+          'provinceId',
+          'provinceNameTh',
+          'provinceNameEn',
+          'districtId',
+          'districtNameTh',
+          'districtNameEn',
+        }),
+      );
       for (final v in homeDistrict.values) {
         expect(v, equals(''));
       }
     });
 
-    test(
-        'invalid email format throws InvalidEmailException, '
+    test('invalid email format throws InvalidEmailException, '
         'does NOT call Firebase', () async {
       final service = makeService();
       await expectLater(
@@ -122,8 +127,7 @@ void main() {
       expect(capturedUid, isNull);
     });
 
-    test(
-        'password shorter than 8 chars throws WeakPasswordException, '
+    test('password shorter than 8 chars throws WeakPasswordException, '
         'does NOT call Firebase', () async {
       final service = makeService();
       await expectLater(
@@ -134,43 +138,47 @@ void main() {
       expect(capturedUid, isNull);
     });
 
-    test('Firebase email-already-in-use maps to friendly AuthException',
-        () async {
-      mockAuth.errorToThrow = firebase_auth.FirebaseAuthException(
-        code: 'email-already-in-use',
-      );
-      final service = makeService();
+    test(
+      'Firebase email-already-in-use maps to friendly AuthException',
+      () async {
+        mockAuth.errorToThrow = firebase_auth.FirebaseAuthException(
+          code: 'email-already-in-use',
+        );
+        final service = makeService();
 
-      await expectLater(
-        () => service.signUp('test@example.com', 'password123'),
-        throwsA(
-          isA<AuthException>().having(
-            (e) => e.message,
-            'message',
-            equals('An account with this email already exists.'),
+        await expectLater(
+          () => service.signUp('test@example.com', 'password123'),
+          throwsA(
+            isA<AuthException>().having(
+              (e) => e.message,
+              'message',
+              equals('An account with this email already exists.'),
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
 
-    test('Firebase network-request-failed maps to friendly AuthException',
-        () async {
-      mockAuth.errorToThrow = firebase_auth.FirebaseAuthException(
-        code: 'network-request-failed',
-      );
-      final service = makeService();
+    test(
+      'Firebase network-request-failed maps to friendly AuthException',
+      () async {
+        mockAuth.errorToThrow = firebase_auth.FirebaseAuthException(
+          code: 'network-request-failed',
+        );
+        final service = makeService();
 
-      await expectLater(
-        () => service.signUp('test@example.com', 'password123'),
-        throwsA(
-          isA<AuthException>().having(
-            (e) => e.message,
-            'message',
-            equals('Network error. Please check your connection.'),
+        await expectLater(
+          () => service.signUp('test@example.com', 'password123'),
+          throwsA(
+            isA<AuthException>().having(
+              (e) => e.message,
+              'message',
+              equals('Network error. Please check your connection.'),
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
 
     test('unknown Firebase error maps to generic AuthException', () async {
       mockAuth.errorToThrow = firebase_auth.FirebaseAuthException(
@@ -196,10 +204,7 @@ void main() {
 
     /// Builds a service — signIn does not write Firestore, so writer is a no-op.
     AuthService makeService() {
-      return AuthService(
-        auth: mockAuth,
-        userDocWriter: (uid, data) async {},
-      );
+      return AuthService(auth: mockAuth, userDocWriter: (uid, data) async {});
     }
 
     setUp(() {
@@ -215,40 +220,42 @@ void main() {
     });
 
     test(
-        'wrong-password Firebase code throws WrongPasswordException', () async {
-      mockAuth.errorToThrow = firebase_auth.FirebaseAuthException(
-        code: 'wrong-password',
-      );
-      final service = makeService();
+      'wrong-password Firebase code throws WrongPasswordException',
+      () async {
+        mockAuth.errorToThrow = firebase_auth.FirebaseAuthException(
+          code: 'wrong-password',
+        );
+        final service = makeService();
 
-      await expectLater(
-        () => service.signIn('test@example.com', 'wrongpass'),
-        throwsA(
-          isA<WrongPasswordException>().having(
-            (e) => e.message,
-            'message',
-            equals('Incorrect password. Please try again.'),
+        await expectLater(
+          () => service.signIn('test@example.com', 'wrongpass'),
+          throwsA(
+            isA<WrongPasswordException>().having(
+              (e) => e.message,
+              'message',
+              equals('Incorrect password. Please try again.'),
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
 
     test(
-        'invalid-credential Firebase code throws WrongPasswordException',
-        () async {
-      mockAuth.errorToThrow = firebase_auth.FirebaseAuthException(
-        code: 'invalid-credential',
-      );
-      final service = makeService();
+      'invalid-credential Firebase code throws WrongPasswordException',
+      () async {
+        mockAuth.errorToThrow = firebase_auth.FirebaseAuthException(
+          code: 'invalid-credential',
+        );
+        final service = makeService();
 
-      await expectLater(
-        () => service.signIn('test@example.com', 'wrongpass'),
-        throwsA(isA<WrongPasswordException>()),
-      );
-    });
+        await expectLater(
+          () => service.signIn('test@example.com', 'wrongpass'),
+          throwsA(isA<WrongPasswordException>()),
+        );
+      },
+    );
 
-    test(
-        'invalid email format throws InvalidEmailException, '
+    test('invalid email format throws InvalidEmailException, '
         'Firebase NOT called', () async {
       final service = makeService();
 
@@ -300,10 +307,7 @@ void main() {
     late _MockFirebaseAuth mockAuth;
 
     AuthService makeService() {
-      return AuthService(
-        auth: mockAuth,
-        userDocWriter: (uid, data) async {},
-      );
+      return AuthService(auth: mockAuth, userDocWriter: (uid, data) async {});
     }
 
     setUp(() {

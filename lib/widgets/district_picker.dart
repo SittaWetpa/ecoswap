@@ -118,10 +118,7 @@ class _DistrictPickerSheetState extends State<DistrictPickerSheet> {
           // Search field
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _SearchField(
-              controller: _controller,
-              focusNode: _focusNode,
-            ),
+            child: _SearchField(controller: _controller, focusNode: _focusNode),
           ),
 
           const SizedBox(height: 8),
@@ -136,29 +133,28 @@ class _DistrictPickerSheetState extends State<DistrictPickerSheet> {
                     ),
                   )
                 : _results.isEmpty
-                    ? _EmptyState(query: _controller.text)
-                    : ListView.separated(
-                        padding: const EdgeInsets.only(bottom: 32),
-                        itemCount: _results.length,
-                        separatorBuilder: (_, _) => const Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: Color(0xFFE5E5E0), // --border
-                          indent: 16,
-                          endIndent: 16,
-                        ),
-                        itemBuilder: (context, index) {
-                          final entry = _results[index];
-                          final isSelected =
-                              widget.initialValue?.districtId ==
-                                  entry.districtId;
-                          return _DistrictTile(
-                            entry: entry,
-                            isSelected: isSelected,
-                            onTap: () => _select(entry),
-                          );
-                        },
-                      ),
+                ? _EmptyState(query: _controller.text)
+                : ListView.separated(
+                    padding: const EdgeInsets.only(bottom: 32),
+                    itemCount: _results.length,
+                    separatorBuilder: (_, _) => const Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: Color(0xFFE5E5E0), // --border
+                      indent: 16,
+                      endIndent: 16,
+                    ),
+                    itemBuilder: (context, index) {
+                      final entry = _results[index];
+                      final isSelected =
+                          widget.initialValue?.districtId == entry.districtId;
+                      return _DistrictTile(
+                        entry: entry,
+                        isSelected: isSelected,
+                        onTap: () => _select(entry),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -187,10 +183,7 @@ class _SearchField extends StatelessWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
 
-  const _SearchField({
-    required this.controller,
-    required this.focusNode,
-  });
+  const _SearchField({required this.controller, required this.focusNode});
 
   @override
   Widget build(BuildContext context) {
@@ -282,7 +275,8 @@ class _DistrictTile extends StatelessWidget {
                       ),
                     ),
                     TextSpan(
-                      text: ' · ${entry.districtNameEn}, ${entry.provinceNameEn}',
+                      text:
+                          ' · ${entry.districtNameEn}, ${entry.provinceNameEn}',
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
@@ -362,10 +356,8 @@ Future<DistrictEntry?> showDistrictPicker(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => DistrictPickerSheet(
-      service: service,
-      initialValue: initialValue,
-    ),
+    builder: (_) =>
+        DistrictPickerSheet(service: service, initialValue: initialValue),
   );
 }
 
@@ -390,10 +382,7 @@ class DistrictAreaField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (value != null) {
-      return _AreaSelected(
-        entry: value!,
-        onClear: () => onChanged(null),
-      );
+      return _AreaSelected(entry: value!, onClear: () => onChanged(null));
     }
     return DistrictRow(
       value: null,

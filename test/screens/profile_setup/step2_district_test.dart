@@ -63,28 +63,36 @@ Future<void> _pickDistrict(WidgetTester tester) async {
 void main() {
   // ── Next button disabled until a district is selected ─────────────────────
   group('Step2District — Next button state', () {
-    testWidgets('Next button is disabled before any district is selected',
-        (WidgetTester tester) async {
+    testWidgets('Next button is disabled before any district is selected', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(_buildScreen());
       await tester.pump();
 
       final btn = tester.widget<ElevatedButton>(
         find.byKey(const Key('nextButton')),
       );
-      expect(btn.onPressed, isNull,
-          reason: 'Next must be disabled with no district selected');
+      expect(
+        btn.onPressed,
+        isNull,
+        reason: 'Next must be disabled with no district selected',
+      );
     });
 
-    testWidgets('Next button is enabled after a district is selected',
-        (WidgetTester tester) async {
+    testWidgets('Next button is enabled after a district is selected', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(_buildScreen());
       await _pickDistrict(tester);
 
       final btn = tester.widget<ElevatedButton>(
         find.byKey(const Key('nextButton')),
       );
-      expect(btn.onPressed, isNotNull,
-          reason: 'Next must be enabled once a district is picked');
+      expect(
+        btn.onPressed,
+        isNotNull,
+        reason: 'Next must be enabled once a district is picked',
+      );
     });
   });
 
@@ -93,18 +101,21 @@ void main() {
   // WBS 5.2 acceptance: "Selecting a district writes all six fields to
   // /users/{uid}.homeDistrict — no missing fields, no extra fields"
   group('Step2District — Firestore write on Next', () {
-    testWidgets('writes all six homeDistrict fields to /users/{uid}',
-        (WidgetTester tester) async {
+    testWidgets('writes all six homeDistrict fields to /users/{uid}', (
+      WidgetTester tester,
+    ) async {
       String? capturedUid;
       Map<String, dynamic>? capturedData;
 
-      await tester.pumpWidget(_buildScreen(
-        onNext: () {},
-        updateUserDoc: (uid, data) async {
-          capturedUid = uid;
-          capturedData = data;
-        },
-      ));
+      await tester.pumpWidget(
+        _buildScreen(
+          onNext: () {},
+          updateUserDoc: (uid, data) async {
+            capturedUid = uid;
+            capturedData = data;
+          },
+        ),
+      );
 
       await _pickDistrict(tester);
       await tester.tap(find.byKey(const Key('nextButton')));
@@ -116,35 +127,46 @@ void main() {
       final hd = capturedData!['homeDistrict'] as Map<String, dynamic>;
 
       // Exactly six fields — no missing, no extra.
-      expect(hd.keys.toSet(), equals({
-        'provinceId',
-        'provinceNameTh',
-        'provinceNameEn',
-        'districtId',
-        'districtNameTh',
-        'districtNameEn',
-      }));
+      expect(
+        hd.keys.toSet(),
+        equals({
+          'provinceId',
+          'provinceNameTh',
+          'provinceNameEn',
+          'districtId',
+          'districtNameTh',
+          'districtNameEn',
+        }),
+      );
 
       // All values are non-empty strings.
       for (final entry in hd.entries) {
-        expect(entry.value, isA<String>(),
-            reason: '${entry.key} must be a String');
-        expect((entry.value as String).isNotEmpty,
-            isTrue, reason: '${entry.key} must not be empty');
+        expect(
+          entry.value,
+          isA<String>(),
+          reason: '${entry.key} must be a String',
+        );
+        expect(
+          (entry.value as String).isNotEmpty,
+          isTrue,
+          reason: '${entry.key} must not be empty',
+        );
       }
     });
 
-    testWidgets('writes correct district values for the selected entry',
-        (WidgetTester tester) async {
+    testWidgets('writes correct district values for the selected entry', (
+      WidgetTester tester,
+    ) async {
       Map<String, dynamic>? capturedHomeDistrict;
 
-      await tester.pumpWidget(_buildScreen(
-        onNext: () {},
-        updateUserDoc: (uid, data) async {
-          capturedHomeDistrict =
-              data['homeDistrict'] as Map<String, dynamic>;
-        },
-      ));
+      await tester.pumpWidget(
+        _buildScreen(
+          onNext: () {},
+          updateUserDoc: (uid, data) async {
+            capturedHomeDistrict = data['homeDistrict'] as Map<String, dynamic>;
+          },
+        ),
+      );
 
       await _pickDistrict(tester);
       await tester.tap(find.byKey(const Key('nextButton')));
@@ -158,14 +180,17 @@ void main() {
       expect(capturedHomeDistrict!['districtNameEn'], equals('Bang Mod'));
     });
 
-    testWidgets('calls onNext after Firestore write succeeds',
-        (WidgetTester tester) async {
+    testWidgets('calls onNext after Firestore write succeeds', (
+      WidgetTester tester,
+    ) async {
       bool nextCalled = false;
 
-      await tester.pumpWidget(_buildScreen(
-        onNext: () => nextCalled = true,
-        updateUserDoc: (_, _) async {},
-      ));
+      await tester.pumpWidget(
+        _buildScreen(
+          onNext: () => nextCalled = true,
+          updateUserDoc: (_, _) async {},
+        ),
+      );
 
       await _pickDistrict(tester);
       await tester.tap(find.byKey(const Key('nextButton')));
@@ -180,8 +205,9 @@ void main() {
   // WBS 5.2 prototype: setup.jsx AreaSelected (lines 135-162) — shows a
   // confirmation card with "Change" button and a "nearby districts" info note.
   group('Step2District — AreaSelected state', () {
-    testWidgets('shows Change button and info note after district is picked',
-        (WidgetTester tester) async {
+    testWidgets('shows Change button and info note after district is picked', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(_buildScreen());
       await _pickDistrict(tester);
 
@@ -194,14 +220,12 @@ void main() {
         findsWidgets,
         reason: 'Info note must reference the selected district English name',
       );
-      expect(
-        find.textContaining('nearby districts'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('nearby districts'), findsOneWidget);
     });
 
-    testWidgets('tapping Change resets to picker state',
-        (WidgetTester tester) async {
+    testWidgets('tapping Change resets to picker state', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(_buildScreen());
       await _pickDistrict(tester);
 
@@ -225,8 +249,9 @@ void main() {
 
   // ── Screen copy ───────────────────────────────────────────────────────────
   group('Step2District — copy', () {
-    testWidgets('shows correct title and subtitle',
-        (WidgetTester tester) async {
+    testWidgets('shows correct title and subtitle', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(_buildScreen());
       await tester.pump();
 

@@ -56,7 +56,7 @@ class _CountingDistrictService extends DistrictService {
   int searchCallCount = 0;
 
   _CountingDistrictService()
-      : super(assetLoader: (_) async => jsonEncode(_fixtureDistricts));
+    : super(assetLoader: (_) async => jsonEncode(_fixtureDistricts));
 
   @override
   Future<List<DistrictEntry>> searchByName(String query) async {
@@ -93,7 +93,8 @@ void main() {
             home: Scaffold(
               body: Builder(
                 builder: (ctx) => ElevatedButton(
-                  onPressed: () => showDistrictPicker(ctx, service: countingSvc),
+                  onPressed: () =>
+                      showDistrictPicker(ctx, service: countingSvc),
                   child: const Text('open'),
                 ),
               ),
@@ -123,18 +124,24 @@ void main() {
 
         // Still within debounce window — should NOT have fired a new search yet
         // (count is still 1 from the initial load)
-        expect(countingSvc.searchCallCount, 1,
-            reason:
-                'searchByName must not be called again while typing within the 200 ms window');
+        expect(
+          countingSvc.searchCallCount,
+          1,
+          reason:
+              'searchByName must not be called again while typing within the 200 ms window',
+        );
 
         // Now advance past the 200 ms debounce threshold
         await tester.pump(const Duration(milliseconds: 200));
         await tester.pumpAndSettle();
 
         // Now exactly one more search should have fired for the final value 'ban'
-        expect(countingSvc.searchCallCount, 2,
-            reason:
-                'searchByName must be called exactly once after the debounce settles');
+        expect(
+          countingSvc.searchCallCount,
+          2,
+          reason:
+              'searchByName must be called exactly once after the debounce settles',
+        );
       },
     );
 
@@ -163,8 +170,9 @@ void main() {
       expect(find.byType(ListView), findsOneWidget);
     });
 
-    testWidgets('tapping a district row dismisses sheet and returns entry',
-        (tester) async {
+    testWidgets('tapping a district row dismisses sheet and returns entry', (
+      tester,
+    ) async {
       final svc = _makeService();
       DistrictEntry? picked;
 
@@ -204,8 +212,9 @@ void main() {
       expect(picked!.districtId, isNotEmpty);
     });
 
-    testWidgets('shows empty state when search returns no results',
-        (tester) async {
+    testWidgets('shows empty state when search returns no results', (
+      tester,
+    ) async {
       final svc = _makeService();
 
       await tester.pumpWidget(
@@ -242,13 +251,7 @@ void main() {
     testWidgets('shows placeholder text when value is null', (tester) async {
       final svc = _makeService();
       await tester.pumpWidget(
-        _wrap(
-          DistrictRow(
-            value: null,
-            service: svc,
-            onChanged: (_) {},
-          ),
-        ),
+        _wrap(DistrictRow(value: null, service: svc, onChanged: (_) {})),
       );
       expect(find.text('Select your district'), findsOneWidget);
     });
@@ -265,13 +268,7 @@ void main() {
       );
 
       await tester.pumpWidget(
-        _wrap(
-          DistrictRow(
-            value: entry,
-            service: svc,
-            onChanged: (_) {},
-          ),
-        ),
+        _wrap(DistrictRow(value: entry, service: svc, onChanged: (_) {})),
       );
 
       // The label is split across RichText spans, so we look for the widget
@@ -279,9 +276,7 @@ void main() {
       expect(find.byType(RichText), findsWidgets);
       // Verify the RichText contains the Thai name somewhere
       final richTexts = tester.widgetList<RichText>(find.byType(RichText));
-      final allText = richTexts
-          .map((rt) => rt.text.toPlainText())
-          .join(' ');
+      final allText = richTexts.map((rt) => rt.text.toPlainText()).join(' ');
       expect(allText, contains('เขตบางรัก'));
       expect(allText, contains('Khet Bang Rak'));
       expect(allText, contains('Bangkok'));
@@ -290,13 +285,7 @@ void main() {
     testWidgets('tapping DistrictRow opens picker sheet', (tester) async {
       final svc = _makeService();
       await tester.pumpWidget(
-        _wrap(
-          DistrictRow(
-            value: null,
-            service: svc,
-            onChanged: (_) {},
-          ),
-        ),
+        _wrap(DistrictRow(value: null, service: svc, onChanged: (_) {})),
       );
 
       await tester.tap(find.byType(DistrictRow));

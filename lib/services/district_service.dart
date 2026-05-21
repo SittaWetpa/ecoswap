@@ -73,7 +73,7 @@ class DistrictService {
   final Future<String> Function(String path)? _assetLoader;
 
   DistrictService({Future<String> Function(String path)? assetLoader})
-      : _assetLoader = assetLoader;
+    : _assetLoader = assetLoader;
 
   /// Loads all districts from the bundled JSON asset.
   ///
@@ -112,12 +112,15 @@ class DistrictService {
     final all = await loadAll();
     final qLower = q.toLowerCase();
 
-    return all.where((d) {
-      return d.districtNameEn.toLowerCase().contains(qLower) ||
-          d.districtNameTh.contains(q) ||
-          d.provinceNameEn.toLowerCase().contains(qLower) ||
-          d.provinceNameTh.contains(q);
-    }).take(50).toList();
+    return all
+        .where((d) {
+          return d.districtNameEn.toLowerCase().contains(qLower) ||
+              d.districtNameTh.contains(q) ||
+              d.provinceNameEn.toLowerCase().contains(qLower) ||
+              d.provinceNameTh.contains(q);
+        })
+        .take(50)
+        .toList();
   }
 
   /// Clears the in-memory cache. Useful in tests to force a reload.

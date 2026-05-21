@@ -40,9 +40,7 @@ final _fixtureDistricts = [
 String _fixtureJson() => jsonEncode(_fixtureDistricts);
 
 DistrictService _makeService() {
-  return DistrictService(
-    assetLoader: (_) async => _fixtureJson(),
-  );
+  return DistrictService(assetLoader: (_) async => _fixtureJson());
 }
 
 void main() {
@@ -69,54 +67,64 @@ void main() {
     // -----------------------------------------------------------------------
     // Acceptance criterion 1: English search
     // -----------------------------------------------------------------------
-    test('searchByName("bang") returns at least one district with "bang" in English name', () async {
-      final svc = _makeService();
-      final results = await svc.searchByName('bang');
-      expect(results, isNotEmpty);
-      expect(
-        results.any((d) => d.districtNameEn.toLowerCase().contains('bang')),
-        isTrue,
-        reason: 'Expected at least one district with "bang" in districtNameEn',
-      );
-    });
+    test(
+      'searchByName("bang") returns at least one district with "bang" in English name',
+      () async {
+        final svc = _makeService();
+        final results = await svc.searchByName('bang');
+        expect(results, isNotEmpty);
+        expect(
+          results.any((d) => d.districtNameEn.toLowerCase().contains('bang')),
+          isTrue,
+          reason:
+              'Expected at least one district with "bang" in districtNameEn',
+        );
+      },
+    );
 
     // -----------------------------------------------------------------------
     // Acceptance criterion 2: Thai search
     // -----------------------------------------------------------------------
-    test('searchByName("บาง") returns at least one district with "บาง" in Thai name', () async {
-      final svc = _makeService();
-      final results = await svc.searchByName('บาง');
-      expect(results, isNotEmpty);
-      expect(
-        results.any((d) => d.districtNameTh.contains('บาง')),
-        isTrue,
-        reason: 'Expected at least one district with "บาง" in districtNameTh',
-      );
-    });
+    test(
+      'searchByName("บาง") returns at least one district with "บาง" in Thai name',
+      () async {
+        final svc = _makeService();
+        final results = await svc.searchByName('บาง');
+        expect(results, isNotEmpty);
+        expect(
+          results.any((d) => d.districtNameTh.contains('บาง')),
+          isTrue,
+          reason: 'Expected at least one district with "บาง" in districtNameTh',
+        );
+      },
+    );
 
     // -----------------------------------------------------------------------
     // Acceptance criterion 3: selected entry has all 6 string fields
     // -----------------------------------------------------------------------
-    test('selecting a district produces an object with all 6 string fields populated', () async {
-      final svc = _makeService();
-      final results = await svc.searchByName('bang');
-      expect(results, isNotEmpty);
-      final entry = results.first;
+    test(
+      'selecting a district produces an object with all 6 string fields populated',
+      () async {
+        final svc = _makeService();
+        final results = await svc.searchByName('bang');
+        expect(results, isNotEmpty);
+        final entry = results.first;
 
-      // Verify all six fields exist and are non-empty strings
-      expect(entry.provinceId, isA<String>());
-      expect(entry.provinceId, isNotEmpty);
-      expect(entry.provinceNameTh, isA<String>());
-      expect(entry.provinceNameTh, isNotEmpty);
-      expect(entry.provinceNameEn, isA<String>());
-      expect(entry.provinceNameEn, isNotEmpty);
-      expect(entry.districtId, isA<String>());
-      expect(entry.districtId, isNotEmpty);
-      expect(entry.districtNameTh, isA<String>());
-      expect(entry.districtNameTh, isNotEmpty);
-      expect(entry.districtNameEn, isA<String>());
-      expect(entry.districtNameEn, isNotEmpty);
-    });
+        // Verify all six fields exist and are non-empty strings
+        expect(entry.provinceId, isA<String>());
+        expect(entry.provinceId, isNotEmpty);
+        expect(entry.provinceNameTh, isA<String>());
+        expect(entry.provinceNameTh, isNotEmpty);
+        expect(entry.provinceNameEn, isA<String>());
+        expect(entry.provinceNameEn, isNotEmpty);
+        expect(entry.districtId, isA<String>());
+        expect(entry.districtId, isNotEmpty);
+        expect(entry.districtNameTh, isA<String>());
+        expect(entry.districtNameTh, isNotEmpty);
+        expect(entry.districtNameEn, isA<String>());
+        expect(entry.districtNameEn, isNotEmpty);
+      },
+    );
 
     test('toJson round-trips through fromJson with no data loss', () async {
       final svc = _makeService();
@@ -146,17 +154,20 @@ void main() {
       expect(results, isEmpty);
     });
 
-    test('displayLabel format is "districtTh · districtEn, provinceEn"', () async {
-      final svc = _makeService();
-      final results = await svc.loadAll();
-      final entry = results.first;
-      final label = entry.displayLabel;
-      expect(label, contains(' · '));
-      expect(label, contains(', '));
-      expect(label, startsWith(entry.districtNameTh));
-      expect(label, contains(entry.districtNameEn));
-      expect(label, endsWith(entry.provinceNameEn));
-    });
+    test(
+      'displayLabel format is "districtTh · districtEn, provinceEn"',
+      () async {
+        final svc = _makeService();
+        final results = await svc.loadAll();
+        final entry = results.first;
+        final label = entry.displayLabel;
+        expect(label, contains(' · '));
+        expect(label, contains(', '));
+        expect(label, startsWith(entry.districtNameTh));
+        expect(label, contains(entry.districtNameEn));
+        expect(label, endsWith(entry.provinceNameEn));
+      },
+    );
 
     test('clearCache forces re-load on next call', () async {
       var callCount = 0;

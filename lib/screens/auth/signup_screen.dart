@@ -69,8 +69,7 @@ class _SignupScreenState extends State<SignupScreen> {
     return InputDecoration(
       filled: true,
       fillColor: _kSurfaceAlt,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: _kBorder),
@@ -139,8 +138,10 @@ class _SignupScreenState extends State<SignupScreen> {
               autocorrect: false,
               decoration: _fieldDecoration().copyWith(
                 hintText: 'you@example.com',
-                hintStyle:
-                    const TextStyle(fontSize: 14, color: Color(0xFFA0A09B)),
+                hintStyle: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFFA0A09B),
+                ),
               ),
               style: const TextStyle(fontSize: 15, color: _kTextPrimary),
             ),
@@ -153,8 +154,10 @@ class _SignupScreenState extends State<SignupScreen> {
               obscureText: true,
               decoration: _fieldDecoration().copyWith(
                 hintText: '••••••••',
-                hintStyle:
-                    const TextStyle(fontSize: 14, color: Color(0xFFA0A09B)),
+                hintStyle: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFFA0A09B),
+                ),
               ),
               style: const TextStyle(fontSize: 15, color: _kTextPrimary),
             ),
@@ -163,8 +166,7 @@ class _SignupScreenState extends State<SignupScreen> {
             if (_error != null)
               Text(
                 _error!,
-                style:
-                    const TextStyle(color: _kDanger, fontSize: 13),
+                style: const TextStyle(color: _kDanger, fontSize: 13),
               ),
             const SizedBox(height: 20),
             // Create account button
@@ -183,7 +185,9 @@ class _SignupScreenState extends State<SignupScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 14),
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
                 ),
                 onPressed: _isLoading ? null : _handleSignUp,
                 child: _isLoading
@@ -208,10 +212,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     children: [
                       TextSpan(
                         text: 'Already have an account? ',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: _kTextSecondary,
-                        ),
+                        style: TextStyle(fontSize: 13, color: _kTextSecondary),
                       ),
                       TextSpan(
                         text: 'Sign in',

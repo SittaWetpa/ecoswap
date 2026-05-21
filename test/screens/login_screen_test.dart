@@ -12,11 +12,8 @@ class _StubAuthService extends AuthService {
   final Exception? _errorToThrow;
 
   _StubAuthService({Exception? errorToThrow})
-      : _errorToThrow = errorToThrow,
-        super(
-          auth: _NoOpFirebaseAuth(),
-          userDocWriter: (uid, data) async {},
-        );
+    : _errorToThrow = errorToThrow,
+      super(auth: _NoOpFirebaseAuth(), userDocWriter: (uid, data) async {});
 
   @override
   Future<firebase_auth.User> signIn(String email, String password) async {
@@ -41,9 +38,7 @@ void main() {
   group('LoginScreen', () {
     testWidgets('renders title and subtitle correctly', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: LoginScreen(authService: _StubAuthService()),
-        ),
+        MaterialApp(home: LoginScreen(authService: _StubAuthService())),
       );
 
       expect(find.text('Welcome back'), findsOneWidget);
@@ -52,31 +47,27 @@ void main() {
 
     testWidgets('renders Sign in button', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: LoginScreen(authService: _StubAuthService()),
-        ),
+        MaterialApp(home: LoginScreen(authService: _StubAuthService())),
       );
 
       expect(find.text('Sign in'), findsOneWidget);
     });
 
-    testWidgets(
-        'shows WrongPasswordException message as friendly error text',
-        (tester) async {
+    testWidgets('shows WrongPasswordException message as friendly error text', (
+      tester,
+    ) async {
       final service = _StubAuthService(
         errorToThrow: const WrongPasswordException(
-            'Incorrect password. Please try again.'),
-      );
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: LoginScreen(authService: service),
+          'Incorrect password. Please try again.',
         ),
       );
 
+      await tester.pumpWidget(
+        MaterialApp(home: LoginScreen(authService: service)),
+      );
+
       // Fill in fields
-      await tester.enterText(
-          find.byType(TextField).first, 'test@example.com');
+      await tester.enterText(find.byType(TextField).first, 'test@example.com');
       await tester.enterText(find.byType(TextField).last, 'wrongpass');
 
       // Tap sign in
@@ -90,18 +81,17 @@ void main() {
       );
     });
 
-    testWidgets(
-        'shows InvalidEmailException message as friendly error text',
-        (tester) async {
+    testWidgets('shows InvalidEmailException message as friendly error text', (
+      tester,
+    ) async {
       final service = _StubAuthService(
         errorToThrow: const InvalidEmailException(
-            'Please enter a valid email address.'),
+          'Please enter a valid email address.',
+        ),
       );
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: LoginScreen(authService: service),
-        ),
+        MaterialApp(home: LoginScreen(authService: service)),
       );
 
       await tester.enterText(find.byType(TextField).first, 'bad-email');
@@ -110,53 +100,45 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      expect(
-        find.text('Please enter a valid email address.'),
-        findsOneWidget,
-      );
+      expect(find.text('Please enter a valid email address.'), findsOneWidget);
     });
 
-    testWidgets(
-        'shows AuthException message as friendly error text', (tester) async {
+    testWidgets('shows AuthException message as friendly error text', (
+      tester,
+    ) async {
       final service = _StubAuthService(
         errorToThrow: const AuthException('No account found with this email.'),
       );
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: LoginScreen(authService: service),
-        ),
+        MaterialApp(home: LoginScreen(authService: service)),
       );
 
       await tester.enterText(
-          find.byType(TextField).first, 'missing@example.com');
+        find.byType(TextField).first,
+        'missing@example.com',
+      );
       await tester.enterText(find.byType(TextField).last, 'password123');
       await tester.tap(find.text('Sign in'));
       await tester.pump();
       await tester.pump();
 
-      expect(
-        find.text('No account found with this email.'),
-        findsOneWidget,
-      );
+      expect(find.text('No account found with this email.'), findsOneWidget);
     });
 
     testWidgets('Forgot password? link is present', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: LoginScreen(authService: _StubAuthService()),
-        ),
+        MaterialApp(home: LoginScreen(authService: _StubAuthService())),
       );
 
       expect(find.text('Forgot password?'), findsOneWidget);
     });
 
-    testWidgets('bottom toggle shows New here? and Create an account',
-        (tester) async {
+    testWidgets('bottom toggle shows New here? and Create an account', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: LoginScreen(authService: _StubAuthService()),
-        ),
+        MaterialApp(home: LoginScreen(authService: _StubAuthService())),
       );
 
       // The bottom toggle uses RichText with TextSpan children, so
@@ -164,9 +146,7 @@ void main() {
       // to inspect the flattened plain text of the RichText.
       expect(
         find.byWidgetPredicate(
-          (w) =>
-              w is RichText &&
-              w.text.toPlainText().contains('New here?'),
+          (w) => w is RichText && w.text.toPlainText().contains('New here?'),
         ),
         findsOneWidget,
       );

@@ -18,8 +18,8 @@ const _kTextSecondary = Color(0xFF6B6B66);
 // ---------------------------------------------------------------------------
 
 /// Writes fields to `/users/{uid}` in Firestore.
-typedef UserDocUpdater = Future<void> Function(
-    String uid, Map<String, dynamic> data);
+typedef UserDocUpdater =
+    Future<void> Function(String uid, Map<String, dynamic> data);
 
 /// Returns the current Firebase Auth user's UID, or null when not signed in.
 typedef CurrentUidGetter = String? Function();
@@ -78,8 +78,7 @@ class _Step2DistrictState extends State<Step2District> {
   DistrictEntry? _selected;
   bool _isSaving = false;
 
-  DistrictService get _service =>
-      widget.districtService ?? DistrictService();
+  DistrictService get _service => widget.districtService ?? DistrictService();
   UserDocUpdater get _updateUserDoc =>
       widget.updateUserDoc ?? _defaultUserDocUpdater();
   CurrentUidGetter get _getCurrentUid =>
@@ -169,8 +168,9 @@ class _Step2DistrictState extends State<Step2District> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _kGreenPrimary,
                   foregroundColor: Colors.white,
-                  disabledBackgroundColor:
-                      _kGreenPrimary.withValues(alpha: 0.4),
+                  disabledBackgroundColor: _kGreenPrimary.withValues(
+                    alpha: 0.4,
+                  ),
                   disabledForegroundColor: Colors.white,
                   textStyle: const TextStyle(
                     fontSize: 15,
