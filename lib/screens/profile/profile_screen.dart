@@ -58,11 +58,7 @@ class ProfileScreen extends StatelessWidget {
         child: Column(
           children: [
             // Placeholder body — full UI implemented in WBS 5.4
-            const Expanded(
-              child: Center(
-                child: Text('Profile — coming soon'),
-              ),
-            ),
+            const Expanded(child: Center(child: Text('Profile — coming soon'))),
 
             // Log out destructive button (full-width, 48px, radius 8px)
             Padding(

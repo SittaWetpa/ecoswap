@@ -61,8 +61,7 @@ class _AuthConsumerWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user =
-        context.watch<auth_prov.AuthProvider>().currentUser;
+    final user = context.watch<auth_prov.AuthProvider>().currentUser;
     return Text(user != null ? 'signed-in' : 'signed-out');
   }
 }
@@ -88,8 +87,7 @@ void main() {
     // simulated (auth stream emits null).
     // -------------------------------------------------------------------------
     test('notifies listeners with null after signOut', () async {
-      final provider =
-          auth_prov.AuthProvider(firebaseAuth: fakeAuth);
+      final provider = auth_prov.AuthProvider(firebaseAuth: fakeAuth);
       addTearDown(provider.dispose);
 
       final emittedValues = <firebase_auth.User?>[];
@@ -109,53 +107,52 @@ void main() {
     // Test 2: widget reading the provider rebuilds when auth state changes.
     // -------------------------------------------------------------------------
     testWidgets(
-        'a widget reading the provider rebuilds when auth state changes',
-        (tester) async {
-      final provider =
-          auth_prov.AuthProvider(firebaseAuth: fakeAuth);
+      'a widget reading the provider rebuilds when auth state changes',
+      (tester) async {
+        final provider = auth_prov.AuthProvider(firebaseAuth: fakeAuth);
 
-      await tester.pumpWidget(
-        ChangeNotifierProvider<auth_prov.AuthProvider>.value(
-          value: provider,
-          child: const MaterialApp(
-            home: Scaffold(body: _AuthConsumerWidget()),
+        await tester.pumpWidget(
+          ChangeNotifierProvider<auth_prov.AuthProvider>.value(
+            value: provider,
+            child: const MaterialApp(
+              home: Scaffold(body: _AuthConsumerWidget()),
+            ),
           ),
-        ),
-      );
-      // Let the widget tree settle after the initial build.
-      await tester.pump();
+        );
+        // Let the widget tree settle after the initial build.
+        await tester.pump();
 
-      // Initially no user — shows signed-out
-      expect(find.text('signed-out'), findsOneWidget);
-      expect(find.text('signed-in'), findsNothing);
+        // Initially no user — shows signed-out
+        expect(find.text('signed-out'), findsOneWidget);
+        expect(find.text('signed-in'), findsNothing);
 
-      // Simulate sign-in: stream emits a user.
-      // pump() twice — first pump delivers the async stream event to the
-      // listener; second pump redraws the widget tree after notifyListeners().
-      fakeAuth.emitSignIn(_FakeUser());
-      await tester.pump(); // microtasks: stream delivers to listener
-      await tester.pump(); // rebuild from notifyListeners()
+        // Simulate sign-in: stream emits a user.
+        // pump() twice — first pump delivers the async stream event to the
+        // listener; second pump redraws the widget tree after notifyListeners().
+        fakeAuth.emitSignIn(_FakeUser());
+        await tester.pump(); // microtasks: stream delivers to listener
+        await tester.pump(); // rebuild from notifyListeners()
 
-      // Widget should now show signed-in
-      expect(find.text('signed-in'), findsOneWidget);
-      expect(find.text('signed-out'), findsNothing);
+        // Widget should now show signed-in
+        expect(find.text('signed-in'), findsOneWidget);
+        expect(find.text('signed-out'), findsNothing);
 
-      // Simulate sign-out
-      fakeAuth.emitSignOut();
-      await tester.pump(); // microtasks
-      await tester.pump(); // rebuild
+        // Simulate sign-out
+        fakeAuth.emitSignOut();
+        await tester.pump(); // microtasks
+        await tester.pump(); // rebuild
 
-      // Widget reverts to signed-out
-      expect(find.text('signed-out'), findsOneWidget);
-      expect(find.text('signed-in'), findsNothing);
-    });
+        // Widget reverts to signed-out
+        expect(find.text('signed-out'), findsOneWidget);
+        expect(find.text('signed-in'), findsNothing);
+      },
+    );
 
     // -------------------------------------------------------------------------
     // Test 3: currentUser sync getter returns null before any auth event.
     // -------------------------------------------------------------------------
     test('currentUser returns null when no user is signed in', () {
-      final provider =
-          auth_prov.AuthProvider(firebaseAuth: fakeAuth);
+      final provider = auth_prov.AuthProvider(firebaseAuth: fakeAuth);
       addTearDown(provider.dispose);
       expect(provider.currentUser, isNull);
     });
@@ -163,25 +160,25 @@ void main() {
     // -------------------------------------------------------------------------
     // Test 4: currentUser sync getter reflects the signed-in user.
     // -------------------------------------------------------------------------
-    test('currentUser reflects signed-in user after auth state change',
-        () async {
-      final provider =
-          auth_prov.AuthProvider(firebaseAuth: fakeAuth);
-      addTearDown(provider.dispose);
+    test(
+      'currentUser reflects signed-in user after auth state change',
+      () async {
+        final provider = auth_prov.AuthProvider(firebaseAuth: fakeAuth);
+        addTearDown(provider.dispose);
 
-      fakeAuth.emitSignIn(_FakeUser());
-      await Future<void>.delayed(Duration.zero);
+        fakeAuth.emitSignIn(_FakeUser());
+        await Future<void>.delayed(Duration.zero);
 
-      expect(provider.currentUser, isNotNull);
-      expect(provider.currentUser!.uid, equals('test-uid'));
-    });
+        expect(provider.currentUser, isNotNull);
+        expect(provider.currentUser!.uid, equals('test-uid'));
+      },
+    );
 
     // -------------------------------------------------------------------------
     // Test 5: AuthProvider.signOut() delegates to FirebaseAuth.signOut().
     // -------------------------------------------------------------------------
     test('signOut() delegates to FirebaseAuth.signOut()', () async {
-      final provider =
-          auth_prov.AuthProvider(firebaseAuth: fakeAuth);
+      final provider = auth_prov.AuthProvider(firebaseAuth: fakeAuth);
       addTearDown(provider.dispose);
 
       expect(fakeAuth.signOutCalled, isFalse);

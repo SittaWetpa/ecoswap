@@ -41,9 +41,7 @@ class _FakeFirebaseAuth extends Fake implements firebase_auth.FirebaseAuth {
 Widget _buildScreen(auth_prov.AuthProvider provider) {
   return ChangeNotifierProvider<auth_prov.AuthProvider>.value(
     value: provider,
-    child: const MaterialApp(
-      home: ProfileScreen(),
-    ),
+    child: const MaterialApp(home: ProfileScreen()),
   );
 }
 
@@ -65,8 +63,9 @@ void main() {
       fakeAuth.dispose();
     });
 
-    testWidgets('tapping "Log out" button shows confirmation dialog',
-        (tester) async {
+    testWidgets('tapping "Log out" button shows confirmation dialog', (
+      tester,
+    ) async {
       await tester.pumpWidget(_buildScreen(provider));
 
       // The button is present on screen
@@ -80,8 +79,9 @@ void main() {
       expect(find.text('Log out?'), findsOneWidget);
     });
 
-    testWidgets('tapping "Cancel" dismisses dialog and does NOT call signOut',
-        (tester) async {
+    testWidgets('tapping "Cancel" dismisses dialog and does NOT call signOut', (
+      tester,
+    ) async {
       await tester.pumpWidget(_buildScreen(provider));
 
       // Open dialog
@@ -100,8 +100,9 @@ void main() {
       expect(fakeAuth.signOutCalled, isFalse);
     });
 
-    testWidgets('tapping "Log out" in dialog calls AuthProvider.signOut',
-        (tester) async {
+    testWidgets('tapping "Log out" in dialog calls AuthProvider.signOut', (
+      tester,
+    ) async {
       await tester.pumpWidget(_buildScreen(provider));
 
       // Open dialog

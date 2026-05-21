@@ -19,7 +19,7 @@ class AuthProvider extends ChangeNotifier {
   User? _currentUser;
 
   AuthProvider({FirebaseAuth? firebaseAuth})
-      : _auth = firebaseAuth ?? FirebaseAuth.instance {
+    : _auth = firebaseAuth ?? FirebaseAuth.instance {
     // Initialise synchronously from the current session (handles cold start
     // where Firebase already has a cached token).
     _currentUser = _auth.currentUser;

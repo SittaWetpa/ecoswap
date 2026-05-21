@@ -31,13 +31,13 @@ class HomeDistrict {
   }
 
   Map<String, dynamic> toJson() => {
-        'provinceId': provinceId,
-        'provinceNameTh': provinceNameTh,
-        'provinceNameEn': provinceNameEn,
-        'districtId': districtId,
-        'districtNameTh': districtNameTh,
-        'districtNameEn': districtNameEn,
-      };
+    'provinceId': provinceId,
+    'provinceNameTh': provinceNameTh,
+    'provinceNameEn': provinceNameEn,
+    'districtId': districtId,
+    'districtNameTh': districtNameTh,
+    'districtNameEn': districtNameEn,
+  };
 
   @override
   bool operator ==(Object other) =>
@@ -52,13 +52,13 @@ class HomeDistrict {
 
   @override
   int get hashCode => Object.hash(
-        provinceId,
-        provinceNameTh,
-        provinceNameEn,
-        districtId,
-        districtNameTh,
-        districtNameEn,
-      );
+    provinceId,
+    provinceNameTh,
+    provinceNameEn,
+    districtId,
+    districtNameTh,
+    districtNameEn,
+  );
 }
 
 /// User document as defined in WBS 3.6 (`/users/{userId}`).
@@ -111,24 +111,23 @@ class User {
           : null,
       tradesCount: (json['tradesCount'] as num?)?.toInt() ?? 0,
       totalCo2Saved: (json['totalCo2Saved'] as num?)?.toDouble() ?? 0,
-      totalWasteDiverted:
-          (json['totalWasteDiverted'] as num?)?.toDouble() ?? 0,
+      totalWasteDiverted: (json['totalWasteDiverted'] as num?)?.toDouble() ?? 0,
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'email': email,
-        'displayName': displayName,
-        'photoUrl': photoUrl,
-        'homeDistrict': homeDistrict.toJson(),
-        'bio': bio,
-        'createdAt': createdAt != null
-            ? Timestamp.fromDate(createdAt!)
-            : FieldValue.serverTimestamp(),
-        'tradesCount': tradesCount,
-        'totalCo2Saved': totalCo2Saved,
-        'totalWasteDiverted': totalWasteDiverted,
-      };
+    'email': email,
+    'displayName': displayName,
+    'photoUrl': photoUrl,
+    'homeDistrict': homeDistrict.toJson(),
+    'bio': bio,
+    'createdAt': createdAt != null
+        ? Timestamp.fromDate(createdAt!)
+        : FieldValue.serverTimestamp(),
+    'tradesCount': tradesCount,
+    'totalCo2Saved': totalCo2Saved,
+    'totalWasteDiverted': totalWasteDiverted,
+  };
 
   User copyWith({
     String? uid,

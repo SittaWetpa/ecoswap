@@ -23,15 +23,12 @@ const _kDanger = Color(0xFFC44545);
 // ---------------------------------------------------------------------------
 
 /// Writes fields to `/users/{uid}` in Firestore.
-typedef UserDocUpdater = Future<void> Function(
-    String uid, Map<String, dynamic> data);
+typedef UserDocUpdater =
+    Future<void> Function(String uid, Map<String, dynamic> data);
 
 UserDocUpdater _defaultUserDocUpdater() {
   return (String uid, Map<String, dynamic> data) =>
-      FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .update(data);
+      FirebaseFirestore.instance.collection('users').doc(uid).update(data);
 }
 
 /// Returns the current Firebase Auth user's UID, or null when not signed in.
@@ -101,24 +98,24 @@ class PhotoUpload extends StatelessWidget {
                             ),
                           )
                         : hasPhoto
-                            ? Text(
-                                'your photo',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontFamily: 'monospace',
-                                  fontSize: 11,
-                                  color: _kGreenDark.withValues(alpha: 0.7),
-                                  height: 1.3,
-                                ),
-                              )
-                            : Text(
-                                initial.isEmpty ? 'N' : initial,
-                                style: const TextStyle(
-                                  fontSize: 44,
-                                  fontWeight: FontWeight.w600,
-                                  color: _kGreenDark,
-                                ),
-                              ),
+                        ? Text(
+                            'your photo',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 11,
+                              color: _kGreenDark.withValues(alpha: 0.7),
+                              height: 1.3,
+                            ),
+                          )
+                        : Text(
+                            initial.isEmpty ? 'N' : initial,
+                            style: const TextStyle(
+                              fontSize: 44,
+                              fontWeight: FontWeight.w600,
+                              color: _kGreenDark,
+                            ),
+                          ),
                   ),
                 ),
                 // Camera badge — bottom-right corner
@@ -154,10 +151,7 @@ class PhotoUpload extends StatelessWidget {
         const SizedBox(height: 14),
         Text(
           hasPhoto ? 'Tap to change' : 'Tap to add a photo',
-          style: const TextStyle(
-            fontSize: 13,
-            color: _kTextSecondary,
-          ),
+          style: const TextStyle(fontSize: 13, color: _kTextSecondary),
           textAlign: TextAlign.center,
         ),
       ],
@@ -250,7 +244,8 @@ class _Step1NamePhotoState extends State<Step1NamePhoto> {
   String? _validateName(String name) {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return 'Display name is required.';
-    if (trimmed.length > 40) return 'Display name must be 40 characters or fewer.';
+    if (trimmed.length > 40)
+      return 'Display name must be 40 characters or fewer.';
     return null;
   }
 
@@ -326,8 +321,7 @@ class _Step1NamePhotoState extends State<Step1NamePhoto> {
       hintStyle: const TextStyle(fontSize: 15, color: _kTextTertiary),
       filled: true,
       fillColor: _kSurfaceAlt,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: _kBorder),
@@ -417,17 +411,12 @@ class _Step1NamePhotoState extends State<Step1NamePhoto> {
                     focusNode: _nameFocus,
                     maxLength: 40,
                     // Hard-cap at 40 chars via formatter
-                    inputFormatters: [
-                      LengthLimitingTextInputFormatter(40),
-                    ],
+                    inputFormatters: [LengthLimitingTextInputFormatter(40)],
                     textCapitalization: TextCapitalization.words,
                     decoration: _nameFieldDecoration().copyWith(
                       counterText: '',
                     ),
-                    style: const TextStyle(
-                      fontSize: 15,
-                      color: _kTextPrimary,
-                    ),
+                    style: const TextStyle(fontSize: 15, color: _kTextPrimary),
                     onChanged: (_) {
                       // Clear error as user types
                       if (_nameError != null) {
@@ -453,8 +442,9 @@ class _Step1NamePhotoState extends State<Step1NamePhoto> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _kGreenPrimary,
                   foregroundColor: Colors.white,
-                  disabledBackgroundColor:
-                      _kGreenPrimary.withValues(alpha: 0.4),
+                  disabledBackgroundColor: _kGreenPrimary.withValues(
+                    alpha: 0.4,
+                  ),
                   disabledForegroundColor: Colors.white,
                   textStyle: const TextStyle(
                     fontSize: 15,
@@ -464,7 +454,9 @@ class _Step1NamePhotoState extends State<Step1NamePhoto> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 14),
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
                 ),
                 onPressed: _canProceed ? _handleNext : null,
                 child: _isSaving

@@ -23,8 +23,8 @@ class WrongPasswordException implements Exception {
 
 /// Typedef for the Firestore user-doc write so tests can inject a simple
 /// closure instead of trying to fake the sealed FirebaseFirestore hierarchy.
-typedef UserDocWriter = Future<void> Function(
-    String uid, Map<String, dynamic> data);
+typedef UserDocWriter =
+    Future<void> Function(String uid, Map<String, dynamic> data);
 
 /// Returns the default writer that writes to the real Firestore instance.
 UserDocWriter _defaultWriter() {
@@ -36,11 +36,9 @@ class AuthService {
   final firebase_auth.FirebaseAuth _auth;
   final UserDocWriter _writeUserDoc;
 
-  AuthService({
-    firebase_auth.FirebaseAuth? auth,
-    UserDocWriter? userDocWriter,
-  })  : _auth = auth ?? firebase_auth.FirebaseAuth.instance,
-        _writeUserDoc = userDocWriter ?? _defaultWriter();
+  AuthService({firebase_auth.FirebaseAuth? auth, UserDocWriter? userDocWriter})
+    : _auth = auth ?? firebase_auth.FirebaseAuth.instance,
+      _writeUserDoc = userDocWriter ?? _defaultWriter();
 
   static final _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
@@ -51,7 +49,8 @@ class AuthService {
     }
     if (password.length < 8) {
       throw const WeakPasswordException(
-          'Password must be at least 8 characters.');
+        'Password must be at least 8 characters.',
+      );
     }
 
     try {
@@ -87,10 +86,12 @@ class AuthService {
       switch (e.code) {
         case 'email-already-in-use':
           throw const AuthException(
-              'An account with this email already exists.');
+            'An account with this email already exists.',
+          );
         case 'network-request-failed':
           throw const AuthException(
-              'Network error. Please check your connection.');
+            'Network error. Please check your connection.',
+          );
         default:
           throw const AuthException('Something went wrong. Please try again.');
       }
@@ -118,12 +119,14 @@ class AuthService {
         case 'wrong-password':
         case 'invalid-credential':
           throw const WrongPasswordException(
-              'Incorrect password. Please try again.');
+            'Incorrect password. Please try again.',
+          );
         case 'user-not-found':
           throw const AuthException('No account found with this email.');
         case 'network-request-failed':
           throw const AuthException(
-              'Network error. Please check your connection.');
+            'Network error. Please check your connection.',
+          );
         default:
           throw const AuthException('Something went wrong. Please try again.');
       }

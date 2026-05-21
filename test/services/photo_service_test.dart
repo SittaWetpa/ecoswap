@@ -21,8 +21,7 @@ ImageCompressFn _compressorReturning(int outputSize) {
     required int minWidth,
     required int minHeight,
     required int quality,
-  }) async =>
-      Uint8List(outputSize);
+  }) async => Uint8List(outputSize);
 }
 
 /// An uploader stub that captures the last call and always returns a fixed URL.
@@ -42,7 +41,8 @@ class _CapturingUploader {
 
 /// A picker stub that always returns [bytes] (simulating user selecting an
 /// image), or [null] to simulate a cancelled pick.
-ImagePickerFn _pickerReturning(Uint8List? bytes) => () async => bytes;
+ImagePickerFn _pickerReturning(Uint8List? bytes) =>
+    () async => bytes;
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -56,27 +56,31 @@ void main() {
   // to 500 KB, then assert the bytes sent to the uploader are < 1 MB.
   group('PhotoService — compressed output < 1 MB', () {
     test(
-        'upload to item_photos/{itemId}.jpg sends < 1 MB bytes to storage',
-        () async {
-      const rawSize = 2 * 1024 * 1024; // 2 MB raw input
-      const compressedSize = 500 * 1024; // 500 KB after compression
+      'upload to item_photos/{itemId}.jpg sends < 1 MB bytes to storage',
+      () async {
+        const rawSize = 2 * 1024 * 1024; // 2 MB raw input
+        const compressedSize = 500 * 1024; // 500 KB after compression
 
-      final uploader = _CapturingUploader();
+        final uploader = _CapturingUploader();
 
-      final service = PhotoService(
-        pickImage: _pickerReturning(_makeRawBytes(rawSize)),
-        compress: _compressorReturning(compressedSize),
-        upload: uploader.call,
-      );
+        final service = PhotoService(
+          pickImage: _pickerReturning(_makeRawBytes(rawSize)),
+          compress: _compressorReturning(compressedSize),
+          upload: uploader.call,
+        );
 
-      final url = await service.pickAndUpload(
-          storagePath: 'item_photos/item-abc123.jpg');
+        final url = await service.pickAndUpload(
+          storagePath: 'item_photos/item-abc123.jpg',
+        );
 
-      expect(url, isNotNull);
-      // The bytes uploaded must be below the 1 MB threshold.
-      expect(uploader.capturedBytes!.length,
-          lessThan(PhotoService.kMaxBytes));
-    });
+        expect(url, isNotNull);
+        // The bytes uploaded must be below the 1 MB threshold.
+        expect(
+          uploader.capturedBytes!.length,
+          lessThan(PhotoService.kMaxBytes),
+        );
+      },
+    );
 
     test('compressedSizeOf reports the compressed byte count', () async {
       const rawSize = 3 * 1024 * 1024; // 3 MB raw
@@ -138,8 +142,7 @@ void main() {
         upload: uploader.call,
       );
 
-      final url =
-          await service.pickAndUpload(storagePath: 'item_photos/x.jpg');
+      final url = await service.pickAndUpload(storagePath: 'item_photos/x.jpg');
 
       expect(url, isNull);
       // Uploader must NOT have been called.
@@ -149,25 +152,25 @@ void main() {
 
   // ── Unit test: compress parameters ────────────────────────────────────────
   group('PhotoService — compression parameters', () {
-    test(
-        'compress is called with kMaxDimension and kJpegQuality', () async {
+    test('compress is called with kMaxDimension and kJpegQuality', () async {
       int? capturedMinWidth;
       int? capturedMinHeight;
       int? capturedQuality;
 
       final service = PhotoService(
         pickImage: _pickerReturning(_makeRawBytes(100)),
-        compress: ({
-          required Uint8List bytes,
-          required int minWidth,
-          required int minHeight,
-          required int quality,
-        }) async {
-          capturedMinWidth = minWidth;
-          capturedMinHeight = minHeight;
-          capturedQuality = quality;
-          return Uint8List(50);
-        },
+        compress:
+            ({
+              required Uint8List bytes,
+              required int minWidth,
+              required int minHeight,
+              required int quality,
+            }) async {
+              capturedMinWidth = minWidth;
+              capturedMinHeight = minHeight;
+              capturedQuality = quality;
+              return Uint8List(50);
+            },
         upload: ({required storagePath, required bytes}) async =>
             'https://example.com/photo.jpg',
       );
@@ -197,8 +200,9 @@ void main() {
         upload: ({required storagePath, required bytes}) async => expectedUrl,
       );
 
-      final url =
-          await service.pickAndUpload(storagePath: 'item_photos/test.jpg');
+      final url = await service.pickAndUpload(
+        storagePath: 'item_photos/test.jpg',
+      );
 
       expect(url, equals(expectedUrl));
     });
