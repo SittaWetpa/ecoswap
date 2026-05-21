@@ -1,0 +1,162 @@
+rules_version = '2';
+
+// Firestore security rules — WBS 3.2
+//
+// Locked decisions enforced here (see CLAUDE.md):
+//   - Deny-by-default: anything not matched below is denied.
+//   - Counter fields on /users/ (tradesCount, totalCo2Saved, totalWasteDiverted)
+//     are written ONLY by the Cloud Function in WBS 10.6. Clients cannot
+//     write or modify these fields directly.
+//   - /matches/ and /trades/ are write-restricted to Cloud Functions.
+//     Clients may only READ /matches/ if they are a participant, and READ
+//     /trades/ if authenticated.
+//   - /items/{itemId} create requires ownerId == request.auth.uid;
+//     update / delete require ownerId == resource.data.ownerId == uid.
+//   - /swipes/{swipeId} writes require swiperId == request.auth.uid (clients
+//     emit their own swipes; mutual-swipe detection happens in WBS 8.3 via a
+//     Cloud Function that bypasses these rules with admin credentials).
+//   - /matches/{matchId}/messages/{messageId}: chat messages (WBS 9.4) are
+//     written by clients; sender must be a participant of the parent match.
+//
+// Schema source: docs/EcoSwap_WBS_Dictionary.md § 3.2 and § 3.6.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // -----------------------------------------------------------------------
+    // /users/{uid}
+    //
+    // Read: any authenticated user (public profiles).
+    // Create: the user creating their own profile during signup (WBS 4.1).
+    //         The three counter fields must equal 0 on create.
+    // Update: the owner only, and the update MUST NOT modify the three
+    //         counter fields. Those are owned by the Cloud Function in
+    //         WBS 10.6 and use admin credentials that bypass these rules.
+    // Delete: not permitted from clients.
+    // -----------------------------------------------------------------------
+    match /users/{uid} {
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+                    && request.auth.uid == uid
+                    && request.resource.data.tradesCount == 0
+                    && request.resource.data.totalCo2Saved == 0
+                    && request.resource.data.totalWasteDiverted == 0;
+
+      allow update: if request.auth != null
+                    && request.auth.uid == uid
+                    && request.resource.data.tradesCount == resource.data.tradesCount
+                    && request.resource.data.totalCo2Saved == resource.data.totalCo2Saved
+                    && request.resource.data.totalWasteDiverted == resource.data.totalWasteDiverted;
+
+      allow delete: if false;
+    }
+
+    // -----------------------------------------------------------------------
+    // /items/{itemId}
+    //
+    // Read: any authenticated user (items appear in the discovery feed).
+    // Create: caller must declare themselves as the ownerId.
+    // Update / Delete: only the owner of the existing item.
+    // Soft delete is a normal update that sets status = 'deleted'
+    // (see WBS 6.4); no special delete rule needed.
+    // -----------------------------------------------------------------------
+    match /items/{itemId} {
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+                    && request.auth.uid == request.resource.data.ownerId;
+
+      allow update, delete: if request.auth != null
+                            && request.auth.uid == resource.data.ownerId;
+    }
+
+    // -----------------------------------------------------------------------
+    // /swipes/{swipeId}
+    //
+    // Read: any authenticated user (WBS 8.3 — mutual swipe detection reads
+    //       reciprocal swipes).
+    // Write: caller must be the swiperId on the document. Swipes are
+    //        append-only — updates and deletes are not permitted.
+    // -----------------------------------------------------------------------
+    match /swipes/{swipeId} {
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+                    && request.auth.uid == request.resource.data.swiperId;
+
+      allow update, delete: if false;
+    }
+
+    // -----------------------------------------------------------------------
+    // /matches/{matchId}
+    //
+    // Read: only the two participants of the match.
+    // Write: forbidden. Matches are created by the Cloud Function in WBS 8.3
+    //        and updated to status='completed' by WBS 10.2's transaction —
+    //        both run with admin credentials that bypass these rules.
+    // -----------------------------------------------------------------------
+    match /matches/{matchId} {
+      allow read: if request.auth != null
+                  && request.auth.uid in resource.data.participants;
+
+      allow write: if false;
+
+      // -----------------------------------------------------------------------
+      // /matches/{matchId}/messages/{messageId}
+      //
+      // Chat messages (WBS 9.4). Read and write require the caller to be a
+      // participant of the parent match. Write also requires senderId to
+      // match the caller's uid. Updates only by the original sender (for
+      // read-receipt updates handled in WBS 9.5, the readBy field is
+      // appended by the recipient — see comment below); deletes are not
+      // permitted.
+      //
+      // Read-receipt note: WBS 9.5 has a recipient append their uid to the
+      // readBy array. That is an update by a non-sender. We permit such
+      // updates only when:
+      //   - The caller is a participant of the parent match
+      //   - The only field changed is readBy
+      //   - The change only ADDS the caller's uid to readBy
+      // -----------------------------------------------------------------------
+      match /messages/{messageId} {
+        allow read: if request.auth != null
+                    && request.auth.uid in
+                       get(/databases/$(database)/documents/matches/$(matchId)).data.participants;
+
+        allow create: if request.auth != null
+                      && request.auth.uid == request.resource.data.senderId
+                      && request.auth.uid in
+                         get(/databases/$(database)/documents/matches/$(matchId)).data.participants;
+
+        // Allow recipients to mark a message read by appending their uid to
+        // readBy. All other fields must remain unchanged.
+        allow update: if request.auth != null
+                      && request.auth.uid in
+                         get(/databases/$(database)/documents/matches/$(matchId)).data.participants
+                      && request.resource.data.senderId == resource.data.senderId
+                      && request.resource.data.text == resource.data.text
+                      && request.resource.data.sentAt == resource.data.sentAt
+                      && request.resource.data.readBy.hasAll(resource.data.readBy)
+                      && request.resource.data.readBy.hasOnly(
+                           resource.data.readBy.concat([request.auth.uid]));
+
+        allow delete: if false;
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // /trades/{tradeId}
+    //
+    // Read: any authenticated user (the impact dashboard in WBS 11.x reads
+    //       trade docs to aggregate impact; we keep this permissive to
+    //       authenticated-only).
+    // Write: forbidden. Trades are written ONLY by the Cloud Function in
+    //        WBS 10.6, inside the transaction started by WBS 10.2.
+    // -----------------------------------------------------------------------
+    match /trades/{tradeId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+  }
+}

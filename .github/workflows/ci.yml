@@ -179,7 +179,7 @@ jobs:
           firebase emulators:exec \
             --only auth,firestore,functions,storage \
             --project ecoswap-ci \
-            "flutter test integration_test/full_flow_test.dart"
+            "flutter test integration_test/"
 
   # ─────────────────────────────────────────────────────────────────
   # 5. Build debug APK as artifact — on every PR and push to main

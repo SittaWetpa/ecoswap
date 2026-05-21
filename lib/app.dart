@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart' as auth_prov;
 import 'screens/auth/login_screen.dart';
 import 'screens/profile/profile_screen.dart';
+import 'screens/profile_setup/step1_name_photo.dart';
 
 // Design token
 const _kGreenPrimary = Color(0xFF1D9E75);
@@ -30,6 +31,11 @@ class EcoSwapApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Named routes shared by both app paths.
+    final routes = <String, WidgetBuilder>{
+      '/profile-setup': (_) => const Step1NamePhoto(),
+    };
+
     // When a raw stream is injected (legacy test path), skip the real
     // AuthProvider so the Firebase SDK is never touched in tests.
     if (authStateStream != null) {
@@ -40,6 +46,7 @@ class EcoSwapApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: _kGreenPrimary),
           fontFamily: 'Inter',
         ),
+        routes: routes,
         home: StreamBuilder<User?>(
           stream: authStateStream,
           builder: (context, snapshot) {
@@ -69,6 +76,7 @@ class EcoSwapApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: _kGreenPrimary),
           fontFamily: 'Inter',
         ),
+        routes: routes,
         home: StreamBuilder<User?>(
           stream: provider.authStateChanges,
           builder: (context, snapshot) {
