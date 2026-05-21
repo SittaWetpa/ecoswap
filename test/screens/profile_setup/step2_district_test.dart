@@ -231,7 +231,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('Where are you based?'), findsOneWidget);
-      expect(find.textContaining('No GPS needed'), findsOneWidget);
+      expect(find.textContaining('never your exact location'), findsOneWidget);
     });
   });
 }

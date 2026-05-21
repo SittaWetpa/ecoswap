@@ -132,7 +132,7 @@ class _Step2DistrictState extends State<Step2District> {
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'We use your district to find nearby swappers. No GPS needed.',
+                    'We only show your district to others, never your exact location.',
                     style: TextStyle(
                       fontSize: 14,
                       color: _kTextSecondary,
