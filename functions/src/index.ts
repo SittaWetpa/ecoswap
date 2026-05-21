@@ -113,3 +113,7 @@ export const onTradeComplete = onDocumentCreated(
     return;
   },
 );
+
+// WBS 8.3 — Mutual Swipe Detection. Re-export the trigger so the Functions
+// framework picks it up and `firebase deploy --only functions` includes it.
+export { onSwipeCreated } from "./onSwipeCreated";
