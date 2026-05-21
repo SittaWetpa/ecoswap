@@ -16,18 +16,20 @@
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",
-    "test": "firebase emulators:exec --only storage --project demo-ecoswap \"jest --runInBand\"",
-    "test:ci": "firebase emulators:exec --only storage --project demo-ecoswap \"jest --runInBand --ci --coverage\"",
-    "test:rules": "firebase emulators:exec --only storage --project demo-ecoswap \"jest --runInBand --testPathPattern=storage.rules\"",
-    "test:no-emulator": "jest --runInBand --testPathIgnorePatterns=storage.rules"
+    "test": "firebase emulators:exec --only firestore,storage --project demo-ecoswap \"jest --runInBand\"",
+    "test:ci": "firebase emulators:exec --only firestore,storage --project demo-ecoswap \"jest --runInBand --ci --coverage\"",
+    "test:rules": "firebase emulators:exec --only firestore,storage --project demo-ecoswap \"jest --runInBand --testPathPattern=rules\"",
+    "test:no-emulator": "jest --runInBand --testPathIgnorePatterns='(storage|firestore)\\.rules'"
   },
   "dependencies": {
     "firebase-admin": "^13.6.0",
-    "firebase-functions": "^7.0.0"
+    "firebase-functions": "^7.0.0",
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^3.0.4",
     "@types/jest": "^29.5.12",
+    "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^20.11.30",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
