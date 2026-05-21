@@ -121,9 +121,7 @@ const List<ProximityOption> kProximityOptions = [
 
 /// Returns the human-readable label for a [ProximityBucket].
 String proximityLabel(ProximityBucket bucket) {
-  return kProximityOptions
-      .firstWhere((o) => o.bucket == bucket)
-      .label;
+  return kProximityOptions.firstWhere((o) => o.bucket == bucket).label;
 }
 
 // ---------------------------------------------------------------------------
@@ -173,10 +171,8 @@ class ProximityFilterSheet extends StatelessWidget {
     return showModalBottomSheet<ProximityBucket>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => ProximityFilterSheet(
-        current: current,
-        onChanged: onChanged,
-      ),
+      builder: (_) =>
+          ProximityFilterSheet(current: current, onChanged: onChanged),
     );
   }
 
@@ -335,8 +331,7 @@ class _OptionRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (selected)
-              const Icon(Icons.check, size: 20, color: _kGreenDark),
+            if (selected) const Icon(Icons.check, size: 20, color: _kGreenDark),
           ],
         ),
       ),
@@ -356,11 +351,7 @@ class ProximityPill extends StatelessWidget {
   final ProximityBucket bucket;
   final VoidCallback onTap;
 
-  const ProximityPill({
-    super.key,
-    required this.bucket,
-    required this.onTap,
-  });
+  const ProximityPill({super.key, required this.bucket, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -375,7 +366,11 @@ class ProximityPill extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.location_on_outlined, size: 12, color: _kGreenDark),
+            const Icon(
+              Icons.location_on_outlined,
+              size: 12,
+              color: _kGreenDark,
+            ),
             const SizedBox(width: 4),
             Text(
               proximityLabel(bucket),
