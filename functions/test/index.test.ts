@@ -48,27 +48,19 @@ describe("WBS 3.5 — Cloud Functions environment scaffold", () => {
     expect(typeof fn.run).toBe("function");
   });
 
-  test("issueQRToken stub rejects unauthenticated callers", async () => {
+  // Note: `issueQRToken` is implemented in WBS 10.1 (see
+  // `test/issueQRToken.test.ts` for behavioural tests). The unauthenticated
+  // and authenticated-with-real-Firestore paths are exercised there.
+
+  test("issueQRToken rejects unauthenticated callers", async () => {
     // Construct a minimal CallableRequest-like object with no auth.
+    // The real 10.1 implementation also throws HttpsError('unauthenticated').
     const fn = functionsModule.issueQRToken as unknown as {
       run: (req: unknown) => Promise<unknown>;
     };
     await expect(
       fn.run({ data: {}, auth: undefined, rawRequest: {} }),
     ).rejects.toThrow(/auth required/);
-  });
-
-  test("issueQRToken stub returns unimplemented for authenticated callers", async () => {
-    const fn = functionsModule.issueQRToken as unknown as {
-      run: (req: unknown) => Promise<unknown>;
-    };
-    await expect(
-      fn.run({
-        data: { matchId: "m1" },
-        auth: { uid: "alice", token: {} },
-        rawRequest: {},
-      }),
-    ).rejects.toThrow(/WBS 10\.1/);
   });
 
   test("validateQRToken stub rejects unauthenticated callers", async () => {
