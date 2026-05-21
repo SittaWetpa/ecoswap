@@ -369,6 +369,139 @@ Future<DistrictEntry?> showDistrictPicker(
   );
 }
 
+/// Composite field for use in the profile-setup wizard (step 2).
+///
+/// Mirrors the `AreaSearch` component in `prototype/src/screens/setup.jsx`:
+/// - When [value] is null: shows a tappable row that opens the district picker.
+/// - When [value] is set: shows a confirmation card ([_AreaSelected]) with a
+///   "Change" button and a "nearby districts" info note.
+class DistrictAreaField extends StatelessWidget {
+  final DistrictEntry? value;
+  final DistrictService service;
+  final ValueChanged<DistrictEntry?> onChanged;
+
+  const DistrictAreaField({
+    super.key,
+    required this.value,
+    required this.service,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (value != null) {
+      return _AreaSelected(
+        entry: value!,
+        onClear: () => onChanged(null),
+      );
+    }
+    return DistrictRow(
+      value: null,
+      service: service,
+      onChanged: (entry) => onChanged(entry),
+    );
+  }
+}
+
+/// Confirmation card shown after a district is picked in the setup wizard.
+///
+/// Corresponds to `AreaSelected` in `prototype/src/screens/setup.jsx:135-162`.
+class _AreaSelected extends StatelessWidget {
+  final DistrictEntry entry;
+  final VoidCallback onClear;
+
+  const _AreaSelected({required this.entry, required this.onClear});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF7F5F0), // --surface-alt
+            border: Border.all(
+              color: const Color(0xFFE5E5E0), // --border
+              width: 1,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.location_on_outlined,
+                size: 20,
+                color: Color(0xFF6B6B66), // --text-secondary
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: RichText(
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: entry.districtNameTh,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A), // --text-primary
+                        ),
+                      ),
+                      TextSpan(
+                        text:
+                            ' · ${entry.districtNameEn}, ${entry.provinceNameEn}',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: Color(0xFF6B6B66), // --text-secondary
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              TextButton(
+                key: const Key('changeDistrictButton'),
+                onPressed: onClear,
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF1D9E75), // --green-primary
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text(
+                  'Change',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              Icons.info_outline,
+              size: 16,
+              color: Color(0xFF6B6B66), // --text-secondary
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                "We'll show you swappers in ${entry.districtNameEn} and nearby districts.",
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF6B6B66), // --text-secondary
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 /// A tappable row that shows the currently selected district and opens the
 /// picker when tapped.
 ///
