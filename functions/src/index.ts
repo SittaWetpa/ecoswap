@@ -25,7 +25,6 @@
  */
 
 import { setGlobalOptions } from "firebase-functions/v2";
-import { onCall, HttpsError, CallableRequest } from "firebase-functions/https";
 import { onDocumentCreated } from "firebase-functions/firestore";
 
 import { JWT_SECRET } from "./secrets";
@@ -58,32 +57,10 @@ setGlobalOptions({ maxInstances: 10 });
  */
 export { JWT_SECRET };
 
-/** Request payload shape for `validateQRToken` (filled in by WBS 10.2). */
-interface ValidateQRTokenData {
-  token: string;
-}
-
 // WBS 10.1 — issueQRToken now has a real implementation in `./issueQRToken`.
-// Re-exported below so Cloud Functions sees the same export name.
-
-/**
- * `validateQRToken` — validate a scanned QR token and (in 10.2) atomically
- * mark the match completed, write the /trades/ doc, and update counters.
- *
- * The stub enforces the auth check and returns `unimplemented`.
- */
-export const validateQRToken = onCall<ValidateQRTokenData>(
-  { secrets: [JWT_SECRET] },
-  async (request: CallableRequest<ValidateQRTokenData>) => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "auth required");
-    }
-    throw new HttpsError(
-      "unimplemented",
-      "validateQRToken stub — real implementation lands in WBS 10.2",
-    );
-  },
-);
+// WBS 10.2 — validateQRToken now has a real implementation in
+// `./validateQRToken`. Both are re-exported below so Cloud Functions sees the
+// same export names.
 
 /**
  * `onTradeComplete` — Firestore trigger on `/trades/{tradeId}` create.
@@ -112,3 +89,7 @@ export { onSwipeCreated } from "./onSwipeCreated";
 // WBS 10.1 — issueQRToken callable. Real implementation lives in its own
 // module to keep `index.ts` lean.
 export { issueQRToken } from "./issueQRToken";
+
+// WBS 10.2 — validateQRToken callable. Real implementation lives in its own
+// module to keep `index.ts` lean.
+export { validateQRToken } from "./validateQRToken";
