@@ -18,8 +18,7 @@ import 'package:ecoswap/services/photo_service.dart';
 // ---------------------------------------------------------------------------
 
 class _FakeFirebaseAuth extends Fake implements firebase_auth.FirebaseAuth {
-  final _controller =
-      StreamController<firebase_auth.User?>.broadcast();
+  final _controller = StreamController<firebase_auth.User?>.broadcast();
 
   @override
   firebase_auth.User? get currentUser => null;
@@ -62,10 +61,7 @@ final _fixtureUser = app_user.User(
 
 /// Builds [ProfileScreen] with a stubbed reader that emits the fixture user's
 /// JSON map directly — no Firestore sealed classes required.
-Widget _buildProfileScreen({
-  app_user.User? user,
-  VoidCallback? onMyItems,
-}) {
+Widget _buildProfileScreen({app_user.User? user, VoidCallback? onMyItems}) {
   final fakeAuth = _FakeFirebaseAuth();
   final provider = auth_prov.AuthProvider(firebaseAuth: fakeAuth);
 
@@ -193,22 +189,23 @@ void main() {
 
     // All 6 fields in one test — display name, district, 3 impact stats, bio
     testWidgets(
-        'renders all 6 fields (display name + district + 3 stats + bio)',
-        (tester) async {
-      await tester.pumpWidget(_buildProfileScreen(user: _fixtureUser));
-      await tester.pump();
+      'renders all 6 fields (display name + district + 3 stats + bio)',
+      (tester) async {
+        await tester.pumpWidget(_buildProfileScreen(user: _fixtureUser));
+        await tester.pump();
 
-      // 1. Display name
-      expect(find.byKey(const Key('profileDisplayName')), findsOneWidget);
-      // 2. District
-      expect(find.byKey(const Key('profileDistrict')), findsOneWidget);
-      // 3–5. Impact summary (3 SummaryStat widgets inside the strip)
-      expect(find.byKey(const Key('impactSummary')), findsOneWidget);
-      final statWidgets = find.byType(SummaryStat);
-      expect(statWidgets, findsNWidgets(3));
-      // 6. Bio
-      expect(find.byKey(const Key('profileBio')), findsOneWidget);
-    });
+        // 1. Display name
+        expect(find.byKey(const Key('profileDisplayName')), findsOneWidget);
+        // 2. District
+        expect(find.byKey(const Key('profileDistrict')), findsOneWidget);
+        // 3–5. Impact summary (3 SummaryStat widgets inside the strip)
+        expect(find.byKey(const Key('impactSummary')), findsOneWidget);
+        final statWidgets = find.byType(SummaryStat);
+        expect(statWidgets, findsNWidgets(3));
+        // 6. Bio
+        expect(find.byKey(const Key('profileBio')), findsOneWidget);
+      },
+    );
 
     testWidgets('top bar shows title only — no cog or info icon', (
       tester,
@@ -402,8 +399,7 @@ void main() {
 
       // homeDistrict must be present with all 6 fields (WBS 3.6)
       expect(capturedData, isNotNull);
-      final district =
-          capturedData!['homeDistrict'] as Map<String, dynamic>?;
+      final district = capturedData!['homeDistrict'] as Map<String, dynamic>?;
       expect(district, isNotNull);
       expect(district!['districtId'], equals('1023'));
       expect(district['districtNameTh'], equals('บางมด'));
@@ -461,9 +457,7 @@ void main() {
       );
     });
 
-    testWidgets('calls onSaved callback after successful save', (
-      tester,
-    ) async {
+    testWidgets('calls onSaved callback after successful save', (tester) async {
       bool savedCalled = false;
 
       await tester.pumpWidget(
@@ -512,18 +506,19 @@ void main() {
           uploadCalled = true;
           return Uint8List.fromList([1, 2, 3]);
         },
-        compress: ({
-          required Uint8List bytes,
-          required int minWidth,
-          required int minHeight,
-          required int quality,
-        }) async =>
-            Uint8List.fromList([1, 2, 3]),
-        upload: ({required String storagePath, required Uint8List bytes}) async {
-          expect(storagePath, equals('user_photos/uid-test-001.jpg'));
-          // Return empty URL to avoid NetworkImage in widget tests.
-          return '';
-        },
+        compress:
+            ({
+              required Uint8List bytes,
+              required int minWidth,
+              required int minHeight,
+              required int quality,
+            }) async => Uint8List.fromList([1, 2, 3]),
+        upload:
+            ({required String storagePath, required Uint8List bytes}) async {
+              expect(storagePath, equals('user_photos/uid-test-001.jpg'));
+              // Return empty URL to avoid NetworkImage in widget tests.
+              return '';
+            },
       );
 
       await tester.pumpWidget(

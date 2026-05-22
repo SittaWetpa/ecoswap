@@ -177,10 +177,7 @@ class ProfileScreen extends StatelessWidget {
               builder: (context, snapshot) {
                 app_user.User? user;
                 if (snapshot.hasData && snapshot.data != null) {
-                  user = app_user.User.fromJson(
-                    snapshot.data!,
-                    uid: uid,
-                  );
+                  user = app_user.User.fromJson(snapshot.data!, uid: uid);
                 }
 
                 return _ProfileBody(
@@ -198,8 +195,7 @@ class ProfileScreen extends StatelessWidget {
                     );
                   },
                   onMyItems: onMyItems,
-                  onLogout: () =>
-                      _showLogoutDialog(context, authProvider),
+                  onLogout: () => _showLogoutDialog(context, authProvider),
                 );
               },
             ),
@@ -295,18 +291,9 @@ class _ProfileBody extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                SummaryStat(
-                  value: '$tradesCount',
-                  label: 'Swaps',
-                ),
-                SummaryStat(
-                  value: co2.toStringAsFixed(1),
-                  label: 'kg CO₂',
-                ),
-                SummaryStat(
-                  value: waste.toStringAsFixed(1),
-                  label: 'kg waste',
-                ),
+                SummaryStat(value: '$tradesCount', label: 'Swaps'),
+                SummaryStat(value: co2.toStringAsFixed(1), label: 'kg CO₂'),
+                SummaryStat(value: waste.toStringAsFixed(1), label: 'kg waste'),
               ],
             ),
           ),
@@ -444,10 +431,7 @@ class _ProfileBody extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
-                    'Log out',
-                    style: TextStyle(fontSize: 15),
-                  ),
+                  child: const Text('Log out', style: TextStyle(fontSize: 15)),
                 ),
               ),
             ],

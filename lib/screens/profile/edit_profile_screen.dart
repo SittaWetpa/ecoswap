@@ -170,7 +170,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _validateName(String name) {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return 'Display name is required.';
-    if (trimmed.length > 40) return 'Display name must be 40 characters or fewer.';
+    if (trimmed.length > 40)
+      return 'Display name must be 40 characters or fewer.';
     return null;
   }
 
@@ -269,11 +270,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(1),
-          child: Divider(
-            height: 1,
-            thickness: 1,
-            color: _kBorder,
-          ),
+          child: Divider(height: 1, thickness: 1, color: _kBorder),
         ),
       ),
       body: Column(
@@ -433,7 +430,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _kGreenPrimary,
                   foregroundColor: Colors.white,
-                  disabledBackgroundColor: _kGreenPrimary.withValues(alpha: 0.4),
+                  disabledBackgroundColor: _kGreenPrimary.withValues(
+                    alpha: 0.4,
+                  ),
                   disabledForegroundColor: Colors.white,
                   textStyle: const TextStyle(
                     fontSize: 15,
@@ -617,11 +616,7 @@ class _EpTextAreaState extends State<_EpTextArea> {
       focusNode: _focusNode,
       maxLines: 4,
       maxLength: widget.maxLength,
-      style: const TextStyle(
-        fontSize: 15,
-        height: 1.45,
-        color: _kTextPrimary,
-      ),
+      style: const TextStyle(fontSize: 15, height: 1.45, color: _kTextPrimary),
       onChanged: (v) {
         widget.onChanged?.call(v);
       },
