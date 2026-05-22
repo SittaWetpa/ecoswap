@@ -235,8 +235,11 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
                 : Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: const [
-                      Icon(Icons.camera_alt_outlined,
-                          size: 32, color: _kTextTertiary),
+                      Icon(
+                        Icons.camera_alt_outlined,
+                        size: 32,
+                        color: _kTextTertiary,
+                      ),
                       SizedBox(height: 8),
                       Text(
                         'Add a photo',
@@ -279,8 +282,11 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
                 errorBuilder: (context2, err, stack) => Container(
                   color: _kSurfaceAlt,
                   child: const Center(
-                    child: Icon(Icons.image_outlined,
-                        size: 48, color: _kTextTertiary),
+                    child: Icon(
+                      Icons.image_outlined,
+                      size: 48,
+                      color: _kTextTertiary,
+                    ),
                   ),
                 ),
               ),
@@ -302,8 +308,11 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: const [
-                      Icon(Icons.camera_alt_outlined,
-                          size: 14, color: _kGreenPrimary),
+                      Icon(
+                        Icons.camera_alt_outlined,
+                        size: 14,
+                        color: _kGreenPrimary,
+                      ),
                       SizedBox(width: 6),
                       Text(
                         'Change photo',
@@ -339,9 +348,7 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: selected ? _kGreenSoft : _kSurfaceAlt,
-              border: Border.all(
-                color: selected ? _kGreenPrimary : _kBorder,
-              ),
+              border: Border.all(color: selected ? _kGreenPrimary : _kBorder),
               borderRadius: BorderRadius.circular(9999),
             ),
             child: Text(
@@ -544,9 +551,7 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
                       controller: _descController,
                       maxLines: 4,
                       maxLength: 280,
-                      inputFormatters: [
-                        LengthLimitingTextInputFormatter(280),
-                      ],
+                      inputFormatters: [LengthLimitingTextInputFormatter(280)],
                       decoration: _inputDecoration(
                         hintText:
                             "Anything worth mentioning — brand, size, why you're letting it go…",
@@ -566,9 +571,7 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
                       controller: _wantsController,
                       maxLines: 3,
                       maxLength: 140,
-                      inputFormatters: [
-                        LengthLimitingTextInputFormatter(140),
-                      ],
+                      inputFormatters: [LengthLimitingTextInputFormatter(140)],
                       decoration: _inputDecoration(
                         hintText:
                             'e.g. books, kitchenware, or something useful for a dorm',
@@ -616,8 +619,9 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _kGreenPrimary,
                               foregroundColor: Colors.white,
-                              disabledBackgroundColor:
-                                  _kGreenPrimary.withAlpha(102),
+                              disabledBackgroundColor: _kGreenPrimary.withAlpha(
+                                102,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),

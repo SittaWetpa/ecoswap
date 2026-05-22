@@ -30,37 +30,30 @@ class _FakeItemService extends ItemService {
 
 /// Returns a fake URL immediately (simulates user picking a photo).
 PhotoService _fakePhotoService() => PhotoService(
-      pickImage: () async => Uint8List(1),
-      compress: ({
+  pickImage: () async => Uint8List(1),
+  compress:
+      ({
         required Uint8List bytes,
         required int minWidth,
         required int minHeight,
         required int quality,
-      }) async =>
-          Uint8List(1),
-      upload: ({
-        required String storagePath,
-        required Uint8List bytes,
-      }) async =>
-          'https://example.com/fake-photo.jpg',
-    );
+      }) async => Uint8List(1),
+  upload: ({required String storagePath, required Uint8List bytes}) async =>
+      'https://example.com/fake-photo.jpg',
+);
 
 /// Returns null (simulates user cancelling the photo picker).
 PhotoService _cancelPhotoService() => PhotoService(
-      pickImage: () async => null,
-      compress: ({
+  pickImage: () async => null,
+  compress:
+      ({
         required Uint8List bytes,
         required int minWidth,
         required int minHeight,
         required int quality,
-      }) async =>
-          Uint8List(0),
-      upload: ({
-        required String storagePath,
-        required Uint8List bytes,
-      }) async =>
-          '',
-    );
+      }) async => Uint8List(0),
+  upload: ({required String storagePath, required Uint8List bytes}) async => '',
+);
 
 // ---------------------------------------------------------------------------
 // Build helper
@@ -103,8 +96,11 @@ Future<void> _pickCategory(WidgetTester tester, ItemCategory category) async {
   // label is visible (some categories like Electronics/Furniture/Other are
   // below the fold in a 600px test viewport).
   final labelFinder = find.text(category.label);
-  await tester.scrollUntilVisible(labelFinder, 100,
-      scrollable: find.byType(Scrollable).last);
+  await tester.scrollUntilVisible(
+    labelFinder,
+    100,
+    scrollable: find.byType(Scrollable).last,
+  );
   await tester.pumpAndSettle();
   await tester.tap(labelFinder.first);
   // Wait for the sheet to fully dismiss before continuing.
@@ -114,7 +110,10 @@ Future<void> _pickCategory(WidgetTester tester, ItemCategory category) async {
 }
 
 /// Scrolls to the condition pills and taps the correct one.
-Future<void> _pickCondition(WidgetTester tester, ItemCondition condition) async {
+Future<void> _pickCondition(
+  WidgetTester tester,
+  ItemCondition condition,
+) async {
   final conditionText = find.text(condition.label);
   await tester.ensureVisible(conditionText);
   await tester.pumpAndSettle();
@@ -159,98 +158,104 @@ void main() {
     // 1. Submit with missing required field — submit button is disabled
     // -----------------------------------------------------------------------
 
-    testWidgets(
-      'submit button is disabled when no fields are filled',
-      (tester) async {
-        final itemService = _FakeItemService();
-        await tester.pumpWidget(_buildScreen(itemService: itemService));
+    testWidgets('submit button is disabled when no fields are filled', (
+      tester,
+    ) async {
+      final itemService = _FakeItemService();
+      await tester.pumpWidget(_buildScreen(itemService: itemService));
 
-        final button = tester.widget<ElevatedButton>(
-          find.byKey(const Key('btn_submit')),
-        );
-        expect(button.onPressed, isNull,
-            reason: 'Submit must be disabled when required fields are missing');
-        expect(itemService.created, isEmpty);
-      },
-    );
+      final button = tester.widget<ElevatedButton>(
+        find.byKey(const Key('btn_submit')),
+      );
+      expect(
+        button.onPressed,
+        isNull,
+        reason: 'Submit must be disabled when required fields are missing',
+      );
+      expect(itemService.created, isEmpty);
+    });
 
-    testWidgets(
-      'submit button is disabled when photo is missing',
-      (tester) async {
-        final itemService = _FakeItemService();
-        await tester.pumpWidget(
-          _buildScreen(
-            itemService: itemService,
-            photoService: _cancelPhotoService(),
-          ),
-        );
+    testWidgets('submit button is disabled when photo is missing', (
+      tester,
+    ) async {
+      final itemService = _FakeItemService();
+      await tester.pumpWidget(
+        _buildScreen(
+          itemService: itemService,
+          photoService: _cancelPhotoService(),
+        ),
+      );
 
-        // Fill name
-        await tester.enterText(find.byKey(const Key('field_name')), 'Test item');
-        await tester.pump();
+      // Fill name
+      await tester.enterText(find.byKey(const Key('field_name')), 'Test item');
+      await tester.pump();
 
-        // Select category
-        final categoryRowFinder = find.byKey(const Key('category_row'));
-        await tester.ensureVisible(categoryRowFinder);
-        await tester.pumpAndSettle();
-        await tester.tap(categoryRowFinder);
-        await tester.pumpAndSettle();
-        await tester.tap(find.text(ItemCategory.clothing.label).first);
-        await tester.pumpAndSettle();
+      // Select category
+      final categoryRowFinder = find.byKey(const Key('category_row'));
+      await tester.ensureVisible(categoryRowFinder);
+      await tester.pumpAndSettle();
+      await tester.tap(categoryRowFinder);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(ItemCategory.clothing.label).first);
+      await tester.pumpAndSettle();
 
-        // Select condition
-        await _pickCondition(tester, ItemCondition.newItem);
+      // Select condition
+      await _pickCondition(tester, ItemCondition.newItem);
 
-        // Button must be disabled (photo was never set because picker returned null)
-        final button = tester.widget<ElevatedButton>(
-          find.byKey(const Key('btn_submit')),
-        );
-        expect(button.onPressed, isNull,
-            reason: 'Submit must be disabled when photo is missing');
-        expect(itemService.created, isEmpty);
-      },
-    );
+      // Button must be disabled (photo was never set because picker returned null)
+      final button = tester.widget<ElevatedButton>(
+        find.byKey(const Key('btn_submit')),
+      );
+      expect(
+        button.onPressed,
+        isNull,
+        reason: 'Submit must be disabled when photo is missing',
+      );
+      expect(itemService.created, isEmpty);
+    });
 
-    testWidgets(
-      'submit button is disabled when name is empty',
-      (tester) async {
-        final itemService = _FakeItemService();
-        await tester.pumpWidget(_buildScreen(itemService: itemService));
+    testWidgets('submit button is disabled when name is empty', (tester) async {
+      final itemService = _FakeItemService();
+      await tester.pumpWidget(_buildScreen(itemService: itemService));
 
-        await _pickPhoto(tester);
-        // Do not enter name
-        await _pickCategory(tester, ItemCategory.books);
-        await _pickCondition(tester, ItemCondition.good);
+      await _pickPhoto(tester);
+      // Do not enter name
+      await _pickCategory(tester, ItemCategory.books);
+      await _pickCondition(tester, ItemCondition.good);
 
-        final button = tester.widget<ElevatedButton>(
-          find.byKey(const Key('btn_submit')),
-        );
-        expect(button.onPressed, isNull,
-            reason: 'Submit must be disabled when name is empty');
-        expect(itemService.created, isEmpty);
-      },
-    );
+      final button = tester.widget<ElevatedButton>(
+        find.byKey(const Key('btn_submit')),
+      );
+      expect(
+        button.onPressed,
+        isNull,
+        reason: 'Submit must be disabled when name is empty',
+      );
+      expect(itemService.created, isEmpty);
+    });
 
-    testWidgets(
-      'submit button is disabled when category is not selected',
-      (tester) async {
-        final itemService = _FakeItemService();
-        await tester.pumpWidget(_buildScreen(itemService: itemService));
+    testWidgets('submit button is disabled when category is not selected', (
+      tester,
+    ) async {
+      final itemService = _FakeItemService();
+      await tester.pumpWidget(_buildScreen(itemService: itemService));
 
-        await _pickPhoto(tester);
-        await tester.enterText(find.byKey(const Key('field_name')), 'My item');
-        await tester.pump();
-        // No category selected
-        await _pickCondition(tester, ItemCondition.used);
+      await _pickPhoto(tester);
+      await tester.enterText(find.byKey(const Key('field_name')), 'My item');
+      await tester.pump();
+      // No category selected
+      await _pickCondition(tester, ItemCondition.used);
 
-        final button = tester.widget<ElevatedButton>(
-          find.byKey(const Key('btn_submit')),
-        );
-        expect(button.onPressed, isNull,
-            reason: 'Submit must be disabled when category is not selected');
-        expect(itemService.created, isEmpty);
-      },
-    );
+      final button = tester.widget<ElevatedButton>(
+        find.byKey(const Key('btn_submit')),
+      );
+      expect(
+        button.onPressed,
+        isNull,
+        reason: 'Submit must be disabled when category is not selected',
+      );
+      expect(itemService.created, isEmpty);
+    });
 
     testWidgets(
       'name field shows inline validation error after text is entered then cleared',
@@ -270,7 +275,8 @@ void main() {
         expect(
           find.text('Item name is required'),
           findsOneWidget,
-          reason: 'Inline validation error must be rendered when name is cleared',
+          reason:
+              'Inline validation error must be rendered when name is cleared',
         );
         expect(itemService.created, isEmpty);
       },
@@ -364,74 +370,72 @@ void main() {
       },
     );
 
-    testWidgets(
-      'weight entered as decimal is stored correctly',
-      (tester) async {
-        final itemService = _FakeItemService();
-        await tester.pumpWidget(_buildScreen(itemService: itemService));
+    testWidgets('weight entered as decimal is stored correctly', (
+      tester,
+    ) async {
+      final itemService = _FakeItemService();
+      await tester.pumpWidget(_buildScreen(itemService: itemService));
 
-        await _fillRequiredFields(tester);
+      await _fillRequiredFields(tester);
 
-        final weightFinder = find.byKey(const Key('field_weight'));
-        await tester.ensureVisible(weightFinder);
-        await tester.enterText(weightFinder, '1.5');
-        await tester.pump();
+      final weightFinder = find.byKey(const Key('field_weight'));
+      await tester.ensureVisible(weightFinder);
+      await tester.enterText(weightFinder, '1.5');
+      await tester.pump();
 
-        await _tapSubmit(tester);
+      await _tapSubmit(tester);
 
-        expect(itemService.created, hasLength(1));
-        expect(itemService.created.first.weight, equals(1.5));
-      },
-    );
+      expect(itemService.created, hasLength(1));
+      expect(itemService.created.first.weight, equals(1.5));
+    });
 
     // -----------------------------------------------------------------------
     // 4. Each of the 7 categories produces a valid document
     // -----------------------------------------------------------------------
 
     for (final category in ItemCategory.values) {
-      testWidgets(
-        'category ${category.value} produces a valid item document',
-        (tester) async {
-          final itemService = _FakeItemService();
-          await tester.pumpWidget(_buildScreen(itemService: itemService));
+      testWidgets('category ${category.value} produces a valid item document', (
+        tester,
+      ) async {
+        final itemService = _FakeItemService();
+        await tester.pumpWidget(_buildScreen(itemService: itemService));
 
-          await _fillRequiredFields(
-            tester,
-            name: 'Test item for ${category.label}',
-            category: category,
-            condition: ItemCondition.good,
-          );
+        await _fillRequiredFields(
+          tester,
+          name: 'Test item for ${category.label}',
+          category: category,
+          condition: ItemCondition.good,
+        );
 
-          await _tapSubmit(tester);
+        await _tapSubmit(tester);
 
-          expect(
-            itemService.created,
-            hasLength(1),
-            reason: 'Expected one item created for ${category.value}',
-          );
+        expect(
+          itemService.created,
+          hasLength(1),
+          reason: 'Expected one item created for ${category.value}',
+        );
 
-          final item = itemService.created.first;
-          expect(item.category, equals(category));
-          expect(item.status, equals('active'));
-          expect(item.ownerId, equals('uid-test'));
+        final item = itemService.created.first;
+        expect(item.category, equals(category));
+        expect(item.status, equals('active'));
+        expect(item.ownerId, equals('uid-test'));
 
-          // Verify the stored value is a valid WBS 3.6 schema string
-          const validValues = {
-            'clothing',
-            'books',
-            'kitchenware',
-            'household',
-            'electronics',
-            'furniture',
-            'other',
-          };
-          expect(
-            validValues.contains(item.category.value),
-            isTrue,
-            reason: '${item.category.value} must be a valid WBS 3.6 schema value',
-          );
-        },
-      );
+        // Verify the stored value is a valid WBS 3.6 schema string
+        const validValues = {
+          'clothing',
+          'books',
+          'kitchenware',
+          'household',
+          'electronics',
+          'furniture',
+          'other',
+        };
+        expect(
+          validValues.contains(item.category.value),
+          isTrue,
+          reason: '${item.category.value} must be a valid WBS 3.6 schema value',
+        );
+      });
     }
 
     // -----------------------------------------------------------------------
@@ -453,19 +457,18 @@ void main() {
     // -----------------------------------------------------------------------
 
     for (final condition in ItemCondition.values) {
-      testWidgets(
-        'condition ${condition.value} is selectable and stored',
-        (tester) async {
-          final itemService = _FakeItemService();
-          await tester.pumpWidget(_buildScreen(itemService: itemService));
+      testWidgets('condition ${condition.value} is selectable and stored', (
+        tester,
+      ) async {
+        final itemService = _FakeItemService();
+        await tester.pumpWidget(_buildScreen(itemService: itemService));
 
-          await _fillRequiredFields(tester, condition: condition);
-          await _tapSubmit(tester);
+        await _fillRequiredFields(tester, condition: condition);
+        await _tapSubmit(tester);
 
-          expect(itemService.created, hasLength(1));
-          expect(itemService.created.first.condition, equals(condition));
-        },
-      );
+        expect(itemService.created, hasLength(1));
+        expect(itemService.created.first.condition, equals(condition));
+      });
     }
   });
 }

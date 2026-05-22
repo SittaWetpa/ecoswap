@@ -33,9 +33,7 @@ class ItemService {
   /// forced to `'active'` regardless of what is in [item].
   Future<String> createItem(Item item) async {
     final docRef = _items.doc();
-    final data = item
-        .copyWith(id: docRef.id, status: 'active')
-        .toJson();
+    final data = item.copyWith(id: docRef.id, status: 'active').toJson();
     await docRef.set(data);
     return docRef.id;
   }
@@ -51,9 +49,8 @@ class ItemService {
         .where('status', whereIn: ['active', 'traded'])
         .snapshots()
         .map(
-          (snap) => snap.docs
-              .map((d) => Item.fromJson(d.data(), id: d.id))
-              .toList(),
+          (snap) =>
+              snap.docs.map((d) => Item.fromJson(d.data(), id: d.id)).toList(),
         );
   }
 
