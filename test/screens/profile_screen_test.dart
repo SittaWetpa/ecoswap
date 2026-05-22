@@ -39,9 +39,33 @@ class _FakeFirebaseAuth extends Fake implements firebase_auth.FirebaseAuth {
 // ---------------------------------------------------------------------------
 
 Widget _buildScreen(auth_prov.AuthProvider provider) {
+  // Inject getCurrentUid so uid != null and _ProfileBody (including the
+  // logout button) is rendered. Also inject a userDocReader that emits a
+  // minimal user map so the StreamBuilder resolves without hitting Firestore.
   return ChangeNotifierProvider<auth_prov.AuthProvider>.value(
     value: provider,
-    child: const MaterialApp(home: ProfileScreen()),
+    child: MaterialApp(
+      home: ProfileScreen(
+        getCurrentUid: () => 'test-uid',
+        userDocReader: (_) => Stream.value(<String, dynamic>{
+          'displayName': 'Test',
+          'email': 'test@example.com',
+          'photoUrl': '',
+          'bio': '',
+          'tradesCount': 0,
+          'totalCo2Saved': 0.0,
+          'totalWasteDiverted': 0.0,
+          'homeDistrict': {
+            'provinceId': '',
+            'provinceNameTh': '',
+            'provinceNameEn': '',
+            'districtId': '',
+            'districtNameTh': '',
+            'districtNameEn': '',
+          },
+        }),
+      ),
+    ),
   );
 }
 
@@ -67,6 +91,7 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(_buildScreen(provider));
+      await tester.pump(); // let StreamBuilder emit user data
 
       // The button is present on screen
       expect(find.text('Log out'), findsOneWidget);
@@ -83,6 +108,7 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(_buildScreen(provider));
+      await tester.pump(); // let StreamBuilder emit user data
 
       // Open dialog
       await tester.tap(find.text('Log out'));
@@ -104,6 +130,7 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(_buildScreen(provider));
+      await tester.pump(); // let StreamBuilder emit user data
 
       // Open dialog
       await tester.tap(find.text('Log out'));

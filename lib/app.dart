@@ -39,7 +39,7 @@ class EcoSwapApp extends StatelessWidget {
     // When a raw stream is injected (legacy test path), skip the real
     // AuthProvider so the Firebase SDK is never touched in tests.
     if (authStateStream != null) {
-      return MaterialApp(
+      final app = MaterialApp(
         title: 'EcoSwap',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
@@ -62,6 +62,14 @@ class EcoSwapApp extends StatelessWidget {
           },
         ),
       );
+      // Wrap with AuthProvider when one is injected so ProfileScreen can read it.
+      if (authProvider != null) {
+        return ChangeNotifierProvider<auth_prov.AuthProvider>.value(
+          value: authProvider!,
+          child: app,
+        );
+      }
+      return app;
     }
 
     // Production path — use the real (or injected) AuthProvider.
