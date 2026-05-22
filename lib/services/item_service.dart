@@ -3,8 +3,7 @@ import '../models/item.dart';
 
 /// Typedef for the Firestore item-doc writer so tests can inject a simple
 /// closure instead of trying to fake the sealed FirebaseFirestore hierarchy.
-typedef ItemDocWriter =
-    Future<String> Function(Map<String, dynamic> data);
+typedef ItemDocWriter = Future<String> Function(Map<String, dynamic> data);
 
 /// Returns the default writer that adds to the real Firestore items collection.
 ItemDocWriter _defaultWriter() {
@@ -15,8 +14,7 @@ ItemDocWriter _defaultWriter() {
 }
 
 /// Typedef for a Firestore stream of active items for a user.
-typedef ActiveItemsStream =
-    Stream<List<Item>> Function(String uid);
+typedef ActiveItemsStream = Stream<List<Item>> Function(String uid);
 
 /// Service for item-related Firestore operations.
 ///

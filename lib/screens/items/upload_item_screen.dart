@@ -286,11 +286,7 @@ class _CategoryRow extends StatelessWidget {
                 color: value != null ? _kTextPrimary : _kTextTertiary,
               ),
             ),
-            const Icon(
-              Icons.chevron_right,
-              size: 20,
-              color: _kTextSecondary,
-            ),
+            const Icon(Icons.chevron_right, size: 20, color: _kTextSecondary),
           ],
         ),
       ),
@@ -361,8 +357,7 @@ class _WeightFieldState extends State<_WeightField> {
                   FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                 ],
                 decoration: InputDecoration(
-                  hintText: widget.placeholder ??
-                      'approx. weight (optional)',
+                  hintText: widget.placeholder ?? 'approx. weight (optional)',
                   hintStyle: const TextStyle(
                     fontSize: 15,
                     color: _kTextTertiary,
@@ -635,8 +630,7 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
       // Use a temporary path; after submit the item ID is known, but we
       // upload eagerly using a UUID-style temporary key. For MVP simplicity
       // we use the uid + timestamp as the storage key.
-      final tempKey =
-          '${uid}_${DateTime.now().millisecondsSinceEpoch}';
+      final tempKey = '${uid}_${DateTime.now().millisecondsSinceEpoch}';
       final url = await _photoService.pickAndUpload(
         storagePath: 'item_photos/$tempKey.jpg',
       );
@@ -684,8 +678,9 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
       _photoError = _hasPhoto ? null : 'A photo is required.';
       _nameError = _validateName(_nameController.text);
       _categoryError = _category == null ? 'Please select a category.' : null;
-      _conditionError =
-          _condition == null ? 'Please select a condition.' : null;
+      _conditionError = _condition == null
+          ? 'Please select a condition.'
+          : null;
       _weightError = _validateWeight(_weightController.text);
     });
 
@@ -704,8 +699,7 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
 
     try {
       final weightText = _weightController.text.trim();
-      final weight =
-          weightText.isEmpty ? null : double.tryParse(weightText);
+      final weight = weightText.isEmpty ? null : double.tryParse(weightText);
 
       final descText = _descController.text.trim();
       final wantsText = _wantsController.text.trim();
@@ -763,10 +757,7 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
 
   // ── Build helpers ─────────────────────────────────────────────────────────
 
-  InputDecoration _textFieldDecoration({
-    String? hintText,
-    String? errorText,
-  }) {
+  InputDecoration _textFieldDecoration({String? hintText, String? errorText}) {
     return InputDecoration(
       hintText: hintText,
       hintStyle: const TextStyle(fontSize: 15, color: _kTextTertiary),
@@ -847,10 +838,7 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
                       const SizedBox(height: 6),
                       Text(
                         _photoError!,
-                        style: const TextStyle(
-                          color: _kDanger,
-                          fontSize: 12,
-                        ),
+                        style: const TextStyle(color: _kDanger, fontSize: 12),
                       ),
                     ],
                     const SizedBox(height: 24),
@@ -861,9 +849,7 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
                       key: const Key('nameField'),
                       controller: _nameController,
                       maxLength: 60,
-                      inputFormatters: [
-                        LengthLimitingTextInputFormatter(60),
-                      ],
+                      inputFormatters: [LengthLimitingTextInputFormatter(60)],
                       decoration: _textFieldDecoration(
                         hintText: 'e.g. Leather tote bag',
                         errorText: _nameError,
@@ -890,10 +876,7 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
                       const SizedBox(height: 6),
                       Text(
                         _categoryError!,
-                        style: const TextStyle(
-                          color: _kDanger,
-                          fontSize: 12,
-                        ),
+                        style: const TextStyle(color: _kDanger, fontSize: 12),
                       ),
                     ],
                     const SizedBox(height: 24),
@@ -913,10 +896,7 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
                       const SizedBox(height: 6),
                       Text(
                         _conditionError!,
-                        style: const TextStyle(
-                          color: _kDanger,
-                          fontSize: 12,
-                        ),
+                        style: const TextStyle(color: _kDanger, fontSize: 12),
                       ),
                     ],
                     const SizedBox(height: 24),
@@ -939,10 +919,7 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
                       const SizedBox(height: 6),
                       Text(
                         _weightError!,
-                        style: const TextStyle(
-                          color: _kDanger,
-                          fontSize: 12,
-                        ),
+                        style: const TextStyle(color: _kDanger, fontSize: 12),
                       ),
                     ],
                     const SizedBox(height: 6),
@@ -963,19 +940,18 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
                       controller: _descController,
                       maxLines: 4,
                       maxLength: 280,
-                      inputFormatters: [
-                        LengthLimitingTextInputFormatter(280),
-                      ],
-                      decoration: _textFieldDecoration(
-                        hintText:
-                            "Anything worth mentioning — brand, size, why you're letting it go…",
-                      ).copyWith(
-                        counterStyle: const TextStyle(
-                          fontSize: 11,
-                          color: _kTextTertiary,
-                        ),
-                        alignLabelWithHint: true,
-                      ),
+                      inputFormatters: [LengthLimitingTextInputFormatter(280)],
+                      decoration:
+                          _textFieldDecoration(
+                            hintText:
+                                "Anything worth mentioning — brand, size, why you're letting it go…",
+                          ).copyWith(
+                            counterStyle: const TextStyle(
+                              fontSize: 11,
+                              color: _kTextTertiary,
+                            ),
+                            alignLabelWithHint: true,
+                          ),
                       style: const TextStyle(
                         fontSize: 15,
                         color: _kTextPrimary,
@@ -991,19 +967,18 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
                       controller: _wantsController,
                       maxLines: 3,
                       maxLength: 140,
-                      inputFormatters: [
-                        LengthLimitingTextInputFormatter(140),
-                      ],
-                      decoration: _textFieldDecoration(
-                        hintText:
-                            'e.g. books, kitchenware, or something useful for a dorm',
-                      ).copyWith(
-                        counterStyle: const TextStyle(
-                          fontSize: 11,
-                          color: _kTextTertiary,
-                        ),
-                        alignLabelWithHint: true,
-                      ),
+                      inputFormatters: [LengthLimitingTextInputFormatter(140)],
+                      decoration:
+                          _textFieldDecoration(
+                            hintText:
+                                'e.g. books, kitchenware, or something useful for a dorm',
+                          ).copyWith(
+                            counterStyle: const TextStyle(
+                              fontSize: 11,
+                              color: _kTextTertiary,
+                            ),
+                            alignLabelWithHint: true,
+                          ),
                       style: const TextStyle(
                         fontSize: 15,
                         color: _kTextPrimary,
@@ -1034,8 +1009,9 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _kGreenPrimary,
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor:
-                          _kGreenPrimary.withValues(alpha: 0.4),
+                      disabledBackgroundColor: _kGreenPrimary.withValues(
+                        alpha: 0.4,
+                      ),
                       disabledForegroundColor: Colors.white,
                       textStyle: const TextStyle(
                         fontSize: 15,
@@ -1046,8 +1022,7 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
                       ),
                       elevation: 0,
                     ),
-                    onPressed:
-                        _isSubmitting ? null : _handleSubmit,
+                    onPressed: _isSubmitting ? null : _handleSubmit,
                     child: _isSubmitting
                         ? const SizedBox(
                             width: 20,

@@ -16,15 +16,14 @@ import 'package:ecoswap/services/photo_service.dart';
 /// touching the real image picker or Firebase Storage.
 PhotoService _fakePhotoService({bool cancel = false}) {
   return PhotoService(
-    pickImage: () async =>
-        cancel ? null : Uint8List.fromList([1, 2, 3, 4, 5]),
-    compress: ({
-      required Uint8List bytes,
-      required int minWidth,
-      required int minHeight,
-      required int quality,
-    }) async =>
-        bytes,
+    pickImage: () async => cancel ? null : Uint8List.fromList([1, 2, 3, 4, 5]),
+    compress:
+        ({
+          required Uint8List bytes,
+          required int minWidth,
+          required int minHeight,
+          required int quality,
+        }) async => bytes,
     upload: ({required String storagePath, required Uint8List bytes}) async =>
         'https://example.com/item.jpg',
   );
@@ -34,10 +33,7 @@ PhotoService _fakePhotoService({bool cancel = false}) {
 class _CapturingItemService extends ItemService {
   Map<String, dynamic>? lastWritten;
 
-  _CapturingItemService()
-      : super(
-          itemDocWriter: (_) async => 'fake-item-id',
-        );
+  _CapturingItemService() : super(itemDocWriter: (_) async => 'fake-item-id');
 
   @override
   Future<String> createItem({
@@ -83,11 +79,11 @@ Widget _buildScreen({
     routes: {
       '/': (_) => const Scaffold(body: Text('home')),
       '/upload': (_) => UploadItemScreen(
-            photoService: photoService ?? _fakePhotoService(),
-            itemService: itemService ?? _CapturingItemService(),
-            getCurrentUid: () => uid,
-            onSubmitSuccess: onSubmitSuccess,
-          ),
+        photoService: photoService ?? _fakePhotoService(),
+        itemService: itemService ?? _CapturingItemService(),
+        getCurrentUid: () => uid,
+        onSubmitSuccess: onSubmitSuccess,
+      ),
     },
   );
 }
@@ -153,8 +149,9 @@ void main() {
   group('UploadItemScreen', () {
     // ── Acceptance: required field validation ────────────────────────────────
 
-    testWidgets('submit with missing photo shows photo validation error',
-        (tester) async {
+    testWidgets('submit with missing photo shows photo validation error', (
+      tester,
+    ) async {
       _useLargeViewport(tester);
       await tester.pumpWidget(
         _buildScreen(photoService: _fakePhotoService(cancel: true)),
@@ -175,8 +172,9 @@ void main() {
       expect(find.text('A photo is required.'), findsOneWidget);
     });
 
-    testWidgets('submit with missing item name shows name validation error',
-        (tester) async {
+    testWidgets('submit with missing item name shows name validation error', (
+      tester,
+    ) async {
       _useLargeViewport(tester);
       await tester.pumpWidget(_buildScreen());
 
@@ -191,47 +189,50 @@ void main() {
     });
 
     testWidgets(
-        'submit with missing category shows category validation error',
-        (tester) async {
-      _useLargeViewport(tester);
-      await tester.pumpWidget(_buildScreen());
+      'submit with missing category shows category validation error',
+      (tester) async {
+        _useLargeViewport(tester);
+        await tester.pumpWidget(_buildScreen());
 
-      await _tapPhoto(tester);
+        await _tapPhoto(tester);
 
-      await tester.enterText(find.byKey(const Key('nameField')), 'My item');
-      await tester.pump();
+        await tester.enterText(find.byKey(const Key('nameField')), 'My item');
+        await tester.pump();
 
-      // Condition but NO category
-      await _pickCondition(tester, 'Used');
+        // Condition but NO category
+        await _pickCondition(tester, 'Used');
 
-      await _tapSubmit(tester);
+        await _tapSubmit(tester);
 
-      expect(find.text('Please select a category.'), findsOneWidget);
-    });
+        expect(find.text('Please select a category.'), findsOneWidget);
+      },
+    );
 
     testWidgets(
-        'submit with missing condition shows condition validation error',
-        (tester) async {
-      _useLargeViewport(tester);
-      await tester.pumpWidget(_buildScreen());
+      'submit with missing condition shows condition validation error',
+      (tester) async {
+        _useLargeViewport(tester);
+        await tester.pumpWidget(_buildScreen());
 
-      await _tapPhoto(tester);
+        await _tapPhoto(tester);
 
-      await tester.enterText(find.byKey(const Key('nameField')), 'My item');
-      await tester.pump();
+        await tester.enterText(find.byKey(const Key('nameField')), 'My item');
+        await tester.pump();
 
-      // Category but NO condition
-      await _pickCategory(tester, ItemCategory.electronics);
+        // Category but NO condition
+        await _pickCategory(tester, ItemCategory.electronics);
 
-      await _tapSubmit(tester);
+        await _tapSubmit(tester);
 
-      expect(find.text('Please select a condition.'), findsOneWidget);
-    });
+        expect(find.text('Please select a condition.'), findsOneWidget);
+      },
+    );
 
     // ── Acceptance: correct Firestore doc shape ──────────────────────────────
 
-    testWidgets('submit with all fields creates item with correct shape',
-        (tester) async {
+    testWidgets('submit with all fields creates item with correct shape', (
+      tester,
+    ) async {
       _useLargeViewport(tester);
       final capturing = _CapturingItemService();
       bool successCalled = false;
@@ -246,7 +247,9 @@ void main() {
       await _tapPhoto(tester);
 
       await tester.enterText(
-          find.byKey(const Key('nameField')), 'Leather tote bag');
+        find.byKey(const Key('nameField')),
+        'Leather tote bag',
+      );
       await tester.pump();
 
       await _pickCategory(tester, ItemCategory.clothing);
@@ -258,27 +261,35 @@ void main() {
       await tester.ensureVisible(find.byKey(const Key('descriptionField')));
       await tester.pump();
       await tester.enterText(
-          find.byKey(const Key('descriptionField')),
-          'Barely used, great condition');
+        find.byKey(const Key('descriptionField')),
+        'Barely used, great condition',
+      );
       await tester.pump();
 
       await tester.ensureVisible(find.byKey(const Key('wantsField')));
       await tester.pump();
       await tester.enterText(
-          find.byKey(const Key('wantsField')), 'books or kitchenware');
+        find.byKey(const Key('wantsField')),
+        'books or kitchenware',
+      );
       await tester.pump();
 
       await _tapSubmit(tester);
 
-      expect(capturing.lastWritten, isNotNull,
-          reason: 'createItem should have been called');
+      expect(
+        capturing.lastWritten,
+        isNotNull,
+        reason: 'createItem should have been called',
+      );
       expect(capturing.lastWritten!['name'], equals('Leather tote bag'));
       expect(capturing.lastWritten!['category'], equals('clothing'));
       expect(capturing.lastWritten!['condition'], equals('like-new'));
       expect(capturing.lastWritten!['status'], equals('active'));
       expect(capturing.lastWritten!['ownerId'], equals('user-test-uid'));
-      expect(capturing.lastWritten!['photoUrl'],
-          equals('https://example.com/item.jpg'));
+      expect(
+        capturing.lastWritten!['photoUrl'],
+        equals('https://example.com/item.jpg'),
+      );
       expect(successCalled, isTrue);
     });
 
@@ -309,8 +320,9 @@ void main() {
     // ── Acceptance: all 7 categories produce a valid document ────────────────
 
     for (final cat in ItemCategory.values) {
-      testWidgets('category ${cat.value} produces valid document',
-          (tester) async {
+      testWidgets('category ${cat.value} produces valid document', (
+        tester,
+      ) async {
         _useLargeViewport(tester);
         final capturing = _CapturingItemService();
 
@@ -318,8 +330,7 @@ void main() {
 
         await _tapPhoto(tester);
 
-        await tester.enterText(
-            find.byKey(const Key('nameField')), 'Test item');
+        await tester.enterText(find.byKey(const Key('nameField')), 'Test item');
         await tester.pump();
 
         await _pickCategory(tester, cat);
@@ -327,8 +338,11 @@ void main() {
 
         await _tapSubmit(tester);
 
-        expect(capturing.lastWritten, isNotNull,
-            reason: 'Category ${cat.value} should produce a written doc');
+        expect(
+          capturing.lastWritten,
+          isNotNull,
+          reason: 'Category ${cat.value} should produce a written doc',
+        );
         expect(capturing.lastWritten!['category'], equals(cat.value));
         expect(capturing.lastWritten!['status'], equals('active'));
       });
@@ -336,8 +350,9 @@ void main() {
 
     // ── Acceptance: status is always 'active' on creation ───────────────────
 
-    testWidgets('status is always written as active on creation',
-        (tester) async {
+    testWidgets('status is always written as active on creation', (
+      tester,
+    ) async {
       _useLargeViewport(tester);
       final capturing = _CapturingItemService();
 
@@ -360,28 +375,34 @@ void main() {
 
     for (final cond in ItemCondition.values) {
       testWidgets(
-          'condition ${cond.value} is selectable and written correctly',
-          (tester) async {
-        _useLargeViewport(tester);
-        final capturing = _CapturingItemService();
+        'condition ${cond.value} is selectable and written correctly',
+        (tester) async {
+          _useLargeViewport(tester);
+          final capturing = _CapturingItemService();
 
-        await tester.pumpWidget(_buildScreen(itemService: capturing));
+          await tester.pumpWidget(_buildScreen(itemService: capturing));
 
-        await _tapPhoto(tester);
+          await _tapPhoto(tester);
 
-        await tester.enterText(
-            find.byKey(const Key('nameField')), 'Test item');
-        await tester.pump();
+          await tester.enterText(
+            find.byKey(const Key('nameField')),
+            'Test item',
+          );
+          await tester.pump();
 
-        await _pickCategory(tester, ItemCategory.books);
-        await _pickCondition(tester, cond.label);
+          await _pickCategory(tester, ItemCategory.books);
+          await _pickCondition(tester, cond.label);
 
-        await _tapSubmit(tester);
+          await _tapSubmit(tester);
 
-        expect(capturing.lastWritten, isNotNull,
-            reason: 'Condition ${cond.value} should produce a written doc');
-        expect(capturing.lastWritten!['condition'], equals(cond.value));
-      });
+          expect(
+            capturing.lastWritten,
+            isNotNull,
+            reason: 'Condition ${cond.value} should produce a written doc',
+          );
+          expect(capturing.lastWritten!['condition'], equals(cond.value));
+        },
+      );
     }
 
     // ── Screen structure ─────────────────────────────────────────────────────
@@ -412,8 +433,11 @@ void main() {
       for (final label in labels) {
         await tester.ensureVisible(find.text(label));
         await tester.pump();
-        expect(find.text(label), findsOneWidget,
-            reason: 'Label "$label" should be visible');
+        expect(
+          find.text(label),
+          findsOneWidget,
+          reason: 'Label "$label" should be visible',
+        );
       }
     });
 
@@ -493,10 +517,18 @@ void main() {
     test('all 7 ItemCategory values are defined', () {
       expect(ItemCategory.values.length, equals(7));
       final values = ItemCategory.values.map((c) => c.value).toSet();
-      expect(values, containsAll([
-        'clothing', 'books', 'kitchenware', 'household',
-        'electronics', 'furniture', 'other',
-      ]));
+      expect(
+        values,
+        containsAll([
+          'clothing',
+          'books',
+          'kitchenware',
+          'household',
+          'electronics',
+          'furniture',
+          'other',
+        ]),
+      );
     });
 
     test('all 4 ItemCondition values are defined', () {
