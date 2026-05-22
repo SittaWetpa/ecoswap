@@ -57,7 +57,10 @@ class _LoginScreenState extends State<LoginScreen> {
         _error = e.message;
       });
     } finally {
-      if (mounted) setState(() { _isLoading = false; });
+      if (mounted)
+        setState(() {
+          _isLoading = false;
+        });
     }
   }
 
@@ -65,8 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return InputDecoration(
       filled: true,
       fillColor: _kSurfaceAlt,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: _kBorder),
@@ -135,8 +137,10 @@ class _LoginScreenState extends State<LoginScreen> {
               autocorrect: false,
               decoration: _fieldDecoration().copyWith(
                 hintText: 'you@example.com',
-                hintStyle:
-                    const TextStyle(fontSize: 14, color: Color(0xFFA0A09B)),
+                hintStyle: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFFA0A09B),
+                ),
               ),
               style: const TextStyle(fontSize: 15, color: _kTextPrimary),
             ),
@@ -149,8 +153,10 @@ class _LoginScreenState extends State<LoginScreen> {
               obscureText: true,
               decoration: _fieldDecoration().copyWith(
                 hintText: '••••••••',
-                hintStyle:
-                    const TextStyle(fontSize: 14, color: Color(0xFFA0A09B)),
+                hintStyle: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFFA0A09B),
+                ),
               ),
               style: const TextStyle(fontSize: 15, color: _kTextPrimary),
             ),
@@ -164,10 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
                 child: const Text(
                   'Forgot password?',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: _kInfo,
-                  ),
+                  style: TextStyle(fontSize: 13, color: _kInfo),
                 ),
               ),
             ),
@@ -195,7 +198,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 14),
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
                 ),
                 onPressed: _isLoading ? null : _handleSignIn,
                 child: _isLoading
@@ -216,19 +221,14 @@ class _LoginScreenState extends State<LoginScreen> {
               child: GestureDetector(
                 onTap: () => Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const SignupScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const SignupScreen()),
                 ),
                 child: RichText(
                   text: const TextSpan(
                     children: [
                       TextSpan(
                         text: 'New here? ',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: _kTextSecondary,
-                        ),
+                        style: TextStyle(fontSize: 13, color: _kTextSecondary),
                       ),
                       TextSpan(
                         text: 'Create an account',

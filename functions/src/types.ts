@@ -15,7 +15,7 @@
  *   - jwtTokenHash and nested impact object are present on TradeDoc
  */
 
-import type { Timestamp } from 'firebase-admin/firestore';
+import type { Timestamp } from "firebase-admin/firestore";
 
 // ---------------------------------------------------------------------------
 // /users/{userId}
@@ -59,17 +59,17 @@ export interface UserDoc {
 // ---------------------------------------------------------------------------
 
 export type ItemCategory =
-  | 'clothing'
-  | 'books'
-  | 'kitchenware'
-  | 'household'
-  | 'electronics'
-  | 'furniture'
-  | 'other';
+  | "clothing"
+  | "books"
+  | "kitchenware"
+  | "household"
+  | "electronics"
+  | "furniture"
+  | "other";
 
-export type ItemCondition = 'new' | 'like-new' | 'good' | 'used';
+export type ItemCondition = "new" | "like-new" | "good" | "used";
 
-export type ItemStatus = 'active' | 'traded' | 'deleted';
+export type ItemStatus = "active" | "traded" | "deleted";
 
 /** /items/{itemId} */
 export interface ItemDoc {
@@ -89,7 +89,7 @@ export interface ItemDoc {
 // /swipes/{swipeId}
 // ---------------------------------------------------------------------------
 
-export type SwipeDirection = 'right' | 'left';
+export type SwipeDirection = "right" | "left";
 
 /**
  * /swipes/{swipeId}
@@ -109,7 +109,7 @@ export interface SwipeDoc {
 // /matches/{matchId}
 // ---------------------------------------------------------------------------
 
-export type MatchStatus = 'active' | 'completed' | 'cancelled';
+export type MatchStatus = "active" | "completed" | "cancelled";
 
 /** /matches/{matchId} */
 export interface MatchDoc {

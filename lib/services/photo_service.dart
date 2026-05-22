@@ -12,18 +12,20 @@ import 'package:image_picker/image_picker.dart';
 typedef ImagePickerFn = Future<Uint8List?> Function();
 
 /// Compresses raw image bytes and returns compressed JPEG bytes.
-typedef ImageCompressFn = Future<Uint8List> Function({
-  required Uint8List bytes,
-  required int minWidth,
-  required int minHeight,
-  required int quality,
-});
+typedef ImageCompressFn =
+    Future<Uint8List> Function({
+      required Uint8List bytes,
+      required int minWidth,
+      required int minHeight,
+      required int quality,
+    });
 
 /// Uploads bytes to [storagePath] and returns the public download URL.
-typedef StorageUploadFn = Future<String> Function({
-  required String storagePath,
-  required Uint8List bytes,
-});
+typedef StorageUploadFn =
+    Future<String> Function({
+      required String storagePath,
+      required Uint8List bytes,
+    });
 
 // ---------------------------------------------------------------------------
 // Default implementations (production)
@@ -107,9 +109,9 @@ class PhotoService {
     ImagePickerFn? pickImage,
     ImageCompressFn? compress,
     StorageUploadFn? upload,
-  })  : _pickImage = pickImage ?? _defaultPickImage,
-        _compress = compress ?? _defaultCompress,
-        _upload = upload ?? _defaultUpload;
+  }) : _pickImage = pickImage ?? _defaultPickImage,
+       _compress = compress ?? _defaultCompress,
+       _upload = upload ?? _defaultUpload;
 
   /// Picks an image from the gallery, compresses it to ≤ 1 MB JPEG, uploads
   /// to [storagePath] in Firebase Storage, and returns the download URL.

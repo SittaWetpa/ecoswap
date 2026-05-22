@@ -8,10 +8,7 @@ import 'package:ecoswap/services/proximity_service.dart';
 // ---------------------------------------------------------------------------
 
 /// Build a minimal User with only the fields ProximityService cares about.
-User _userWith({
-  required String provinceId,
-  required String districtId,
-}) {
+User _userWith({required String provinceId, required String districtId}) {
   return User(
     uid: 'uid-$provinceId-$districtId',
     email: '',
@@ -169,10 +166,7 @@ void main() {
         'sameDistrict (districtId wins first)', () {
       final emptyA = _userWith(provinceId: '', districtId: 'same');
       final emptyB = _userWith(provinceId: '', districtId: 'same');
-      expect(
-        service.bucketFor(emptyA, emptyB),
-        ProximityBucket.sameDistrict,
-      );
+      expect(service.bucketFor(emptyA, emptyB), ProximityBucket.sameDistrict);
     });
   });
 
@@ -280,11 +274,11 @@ void main() {
       final expected = [
         ...List.generate(18, (i) => (10 + i).toString()), // 10–27
         ...List.generate(20, (i) => (30 + i).toString()), // 30–49
-        ...List.generate(9, (i) => (50 + i).toString()),  // 50–58
-        ...List.generate(8, (i) => (60 + i).toString()),  // 60–67
-        ...List.generate(8, (i) => (70 + i).toString()),  // 70–77
-        ...List.generate(7, (i) => (80 + i).toString()),  // 80–86
-        ...List.generate(7, (i) => (90 + i).toString()),  // 90–96
+        ...List.generate(9, (i) => (50 + i).toString()), // 50–58
+        ...List.generate(8, (i) => (60 + i).toString()), // 60–67
+        ...List.generate(8, (i) => (70 + i).toString()), // 70–77
+        ...List.generate(7, (i) => (80 + i).toString()), // 80–86
+        ...List.generate(7, (i) => (90 + i).toString()), // 90–96
       ];
       expect(expected.length, 77);
       for (final id in expected) {

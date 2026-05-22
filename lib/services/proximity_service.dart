@@ -29,8 +29,9 @@ class ProximityService {
 
   /// Loads [nearby_provinces.json] from assets and returns a ready service.
   static Future<ProximityService> load() async {
-    final raw = await rootBundle
-        .loadString('assets/data/nearby_provinces.json');
+    final raw = await rootBundle.loadString(
+      'assets/data/nearby_provinces.json',
+    );
     return ProximityService._(_parseJson(raw));
   }
 
@@ -47,8 +48,9 @@ class ProximityService {
       if (entry.key.startsWith('_')) continue;
       final list = entry.value;
       if (list is List) {
-        result[entry.key] =
-            List<String>.unmodifiable(list.map((e) => e.toString()));
+        result[entry.key] = List<String>.unmodifiable(
+          list.map((e) => e.toString()),
+        );
       }
     }
     return Map.unmodifiable(result);
