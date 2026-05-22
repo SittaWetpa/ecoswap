@@ -81,7 +81,9 @@ Map<String, double> _parseTsMap(String source, String constName) {
 
   // Match `key: number,` entries. Keys are bare identifiers (no quotes in
   // the current TS source); values are integers or decimals.
-  final entryRegex = RegExp(r'([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([0-9]+(?:\.[0-9]+)?)');
+  final entryRegex = RegExp(
+    r'([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([0-9]+(?:\.[0-9]+)?)',
+  );
   final result = <String, double>{};
   for (final m in entryRegex.allMatches(body)) {
     final key = m.group(1)!;
@@ -91,7 +93,8 @@ Map<String, double> _parseTsMap(String source, String constName) {
   expect(
     result,
     isNotEmpty,
-    reason: 'Parsed $constName block but found no key:number entries — '
+    reason:
+        'Parsed $constName block but found no key:number entries — '
         'regex likely mismatched the file format.',
   );
   return result;
@@ -119,23 +122,31 @@ void main() {
         expect(impactCategories.length, equals(7));
       });
 
-      test('no forbidden / renamed categories are present (e.g. "kitchen")',
-          () {
-        // Common typos / renames that would silently break impact math.
-        const forbidden = <String>[
-          'kitchen',
-          'appliance',
-          'appliances',
-          'clothes',
-          'book',
-        ];
-        for (final bad in forbidden) {
-          expect(co2Intensity.containsKey(bad), isFalse,
-              reason: 'co2Intensity must not contain forbidden key "$bad"');
-          expect(typicalWeight.containsKey(bad), isFalse,
-              reason: 'typicalWeight must not contain forbidden key "$bad"');
-        }
-      });
+      test(
+        'no forbidden / renamed categories are present (e.g. "kitchen")',
+        () {
+          // Common typos / renames that would silently break impact math.
+          const forbidden = <String>[
+            'kitchen',
+            'appliance',
+            'appliances',
+            'clothes',
+            'book',
+          ];
+          for (final bad in forbidden) {
+            expect(
+              co2Intensity.containsKey(bad),
+              isFalse,
+              reason: 'co2Intensity must not contain forbidden key "$bad"',
+            );
+            expect(
+              typicalWeight.containsKey(bad),
+              isFalse,
+              reason: 'typicalWeight must not contain forbidden key "$bad"',
+            );
+          }
+        },
+      );
     });
 
     group('drift detection (cross-language sync vs TypeScript copy)', () {
@@ -164,7 +175,8 @@ void main() {
           expect(
             co2Intensity[category],
             equals(tsCo2Intensity[category]),
-            reason: 'co2Intensity drift for "$category": '
+            reason:
+                'co2Intensity drift for "$category": '
                 'Dart=${co2Intensity[category]} vs TS=${tsCo2Intensity[category]}',
           );
         }
@@ -175,7 +187,8 @@ void main() {
           expect(
             typicalWeight[category],
             equals(tsTypicalWeight[category]),
-            reason: 'typicalWeight drift for "$category": '
+            reason:
+                'typicalWeight drift for "$category": '
                 'Dart=${typicalWeight[category]} vs TS=${tsTypicalWeight[category]}',
           );
         }
@@ -186,8 +199,11 @@ void main() {
       test('every co2Intensity value is a positive finite number', () {
         for (final category in canonicalCategories) {
           final value = co2Intensity[category];
-          expect(value, isNotNull,
-              reason: 'co2Intensity missing key "$category"');
+          expect(
+            value,
+            isNotNull,
+            reason: 'co2Intensity missing key "$category"',
+          );
           expect(value!.isFinite, isTrue);
           expect(value, greaterThan(0));
         }
@@ -196,8 +212,11 @@ void main() {
       test('every typicalWeight value is a positive finite number', () {
         for (final category in canonicalCategories) {
           final value = typicalWeight[category];
-          expect(value, isNotNull,
-              reason: 'typicalWeight missing key "$category"');
+          expect(
+            value,
+            isNotNull,
+            reason: 'typicalWeight missing key "$category"',
+          );
           expect(value!.isFinite, isTrue);
           expect(value, greaterThan(0));
         }
