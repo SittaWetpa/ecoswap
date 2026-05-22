@@ -4,22 +4,40 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ecoswap/app.dart';
+import 'package:ecoswap/providers/auth_provider.dart' as auth_prov;
+import 'package:ecoswap/screens/profile/profile_screen.dart';
 
 class _FakeUser extends Fake implements User {}
+
+class _FakeFirebaseAuth extends Fake implements FirebaseAuth {
+  @override
+  User? get currentUser => null;
+
+  @override
+  Stream<User?> authStateChanges() => const Stream.empty();
+}
 
 void main() {
   group('EcoSwapApp route guard', () {
     testWidgets(
       'shows ProfileScreen when authStateStream emits a non-null User',
       (tester) async {
+        // Pass authProvider so ProfileScreen can read it via context.read.
+        final provider = auth_prov.AuthProvider(
+          firebaseAuth: _FakeFirebaseAuth(),
+        );
+
         await tester.pumpWidget(
-          EcoSwapApp(authStateStream: Stream.value(_FakeUser())),
+          EcoSwapApp(
+            authStateStream: Stream.value(_FakeUser()),
+            authProvider: provider,
+          ),
         );
         // Let the StreamBuilder settle
         await tester.pump();
 
-        // ProfileScreen is shown — the placeholder body text is visible
-        expect(find.text('Profile — coming soon'), findsOneWidget);
+        // ProfileScreen is in the widget tree (WBS 5.4 replaced placeholder).
+        expect(find.byType(ProfileScreen), findsOneWidget);
       },
     );
 
