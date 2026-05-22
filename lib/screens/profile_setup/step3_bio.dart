@@ -134,10 +134,7 @@ class _Step3BioState extends State<Step3Bio> {
             onPressed: _isSaving ? null : _handleDone,
             child: const Text(
               'Skip',
-              style: TextStyle(
-                fontSize: 14,
-                color: _kTextSecondary,
-              ),
+              style: TextStyle(fontSize: 14, color: _kTextSecondary),
             ),
           ),
         ],

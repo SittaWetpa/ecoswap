@@ -48,9 +48,7 @@ void main() {
       await tester.enterText(find.byKey(const Key('bioField')), over140);
       await tester.pump();
 
-      final field = tester.widget<TextField>(
-        find.byKey(const Key('bioField')),
-      );
+      final field = tester.widget<TextField>(find.byKey(const Key('bioField')));
       final actualLength = field.controller!.text.length;
       expect(
         actualLength,
@@ -68,9 +66,7 @@ void main() {
       await tester.enterText(find.byKey(const Key('bioField')), exactly140);
       await tester.pump();
 
-      final field = tester.widget<TextField>(
-        find.byKey(const Key('bioField')),
-      );
+      final field = tester.widget<TextField>(find.byKey(const Key('bioField')));
       expect(field.controller!.text.length, equals(140));
     });
   });
