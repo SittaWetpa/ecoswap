@@ -128,12 +128,14 @@ jobs:
         run: npm ci
 
       - name: Run rules tests against emulator
-        # Starts the Firestore emulator, runs the rules tests, tears down
+        # Starts the Firestore + Storage emulators, runs the rules tests, tears down.
+        # Uses test:rules:ci (plain jest, no nested emulators:exec) to avoid port
+        # conflicts that would occur if test:rules were called here instead.
         run: |
           firebase emulators:exec \
-            --only firestore \
-            --project ecoswap-ci \
-            "cd functions && npm run test:rules"
+            --only firestore,storage \
+            --project demo-ecoswap \
+            "cd functions && npm run test:rules:ci"
 
   # ─────────────────────────────────────────────────────────────────
   # 4. End-to-end integration test (WBS 12.1)

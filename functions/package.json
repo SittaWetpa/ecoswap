@@ -19,6 +19,7 @@
     "test": "firebase emulators:exec --only firestore,storage --project demo-ecoswap \"jest --runInBand\"",
     "test:ci": "firebase emulators:exec --only firestore,storage --project demo-ecoswap \"jest --runInBand --ci --coverage\"",
     "test:rules": "firebase emulators:exec --only firestore,storage --project demo-ecoswap \"jest --runInBand --testPathPattern=rules\"",
+    "test:rules:ci": "jest --runInBand --testPathPattern=rules",
     "test:no-emulator": "jest --runInBand --testPathIgnorePatterns='(storage|firestore)\\.rules'"
   },
   "dependencies": {
