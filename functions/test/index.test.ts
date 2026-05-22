@@ -1,14 +1,16 @@
 /**
  * Unit tests for the Cloud Functions scaffold (WBS 3.5).
  *
- * Verifies that the three function stubs (`issueQRToken`, `validateQRToken`,
- * `onTradeComplete`) are exported with the expected callable / trigger shape
- * and that the `JWT_SECRET` binding is wired to Secret Manager (not to
- * `process.env`).
+ * Verifies that the three required function exports (`issueQRToken`,
+ * `validateQRToken`, `onTradeComplete`) are present with the expected
+ * callable / trigger shape and that the `JWT_SECRET` binding is wired to
+ * Secret Manager (not to `process.env`).
  *
- * Real behavioural tests for these functions arrive in WBS 10.1, 10.2, and
- * 10.6 — they will use the Firestore + Auth emulator. This file only covers
- * the scaffolding Acceptance criteria from 3.5.
+ * Real behavioural tests for these functions live in their own files:
+ *   - WBS 10.1 → `test/issueQRToken.test.ts`
+ *   - WBS 10.2 → `test/validateQRToken.test.ts`
+ *   - WBS 10.6 → arrives with that task
+ * This file only covers the scaffolding Acceptance criteria from 3.5.
  */
 
 import * as functionsModule from "../src/index";
@@ -63,25 +65,19 @@ describe("WBS 3.5 — Cloud Functions environment scaffold", () => {
     ).rejects.toThrow(/auth required/);
   });
 
-  test("validateQRToken stub rejects unauthenticated callers", async () => {
+  // Note: `validateQRToken` is implemented in WBS 10.2 (see
+  // `test/validateQRToken.test.ts` for the full behavioural test suite that
+  // covers all five typed error codes — INVALID_SIGNATURE, EXPIRED,
+  // WRONG_COUNTERPARTY, ALREADY_USED, MATCH_INVALID — plus the single-use
+  // single-use transaction guarantee). The scaffold test below only asserts
+  // the unauthenticated path, which matches the issueQRToken pattern above.
+
+  test("validateQRToken rejects unauthenticated callers", async () => {
     const fn = functionsModule.validateQRToken as unknown as {
       run: (req: unknown) => Promise<unknown>;
     };
     await expect(
       fn.run({ data: { token: "x" }, auth: undefined, rawRequest: {} }),
     ).rejects.toThrow(/auth required/);
-  });
-
-  test("validateQRToken stub returns unimplemented for authenticated callers", async () => {
-    const fn = functionsModule.validateQRToken as unknown as {
-      run: (req: unknown) => Promise<unknown>;
-    };
-    await expect(
-      fn.run({
-        data: { token: "x" },
-        auth: { uid: "bob", token: {} },
-        rawRequest: {},
-      }),
-    ).rejects.toThrow(/WBS 10\.2/);
   });
 });
