@@ -6,10 +6,8 @@ import '../models/item.dart';
 typedef ItemDocWriter = Future<String> Function(Map<String, dynamic> data);
 
 /// Typedef for updating an existing item document by ID.
-typedef ItemDocUpdater = Future<void> Function(
-  String itemId,
-  Map<String, dynamic> data,
-);
+typedef ItemDocUpdater =
+    Future<void> Function(String itemId, Map<String, dynamic> data);
 
 /// Typedef for soft-deleting an item document by ID.
 typedef ItemDocSoftDeleter = Future<void> Function(String itemId);
@@ -108,8 +106,9 @@ class ItemService {
       'category': category.value,
       'condition': condition.value,
       'weight': weight,
-      'description':
-          description?.trim().isEmpty == true ? null : description?.trim(),
+      'description': description?.trim().isEmpty == true
+          ? null
+          : description?.trim(),
       'wants': wants?.trim().isEmpty == true ? null : wants?.trim(),
       'photoUrl': photoUrl,
     };
@@ -131,10 +130,9 @@ class ItemService {
     if (deleter != null) {
       await deleter(itemId);
     } else {
-      await _db
-          .collection('items')
-          .doc(itemId)
-          .update({'status': ItemStatus.deleted.value});
+      await _db.collection('items').doc(itemId).update({
+        'status': ItemStatus.deleted.value,
+      });
     }
   }
 

@@ -17,13 +17,13 @@ import 'package:ecoswap/services/photo_service.dart';
 PhotoService _fakePhotoService() {
   return PhotoService(
     pickImage: () async => Uint8List.fromList([1, 2, 3]),
-    compress: ({
-      required Uint8List bytes,
-      required int minWidth,
-      required int minHeight,
-      required int quality,
-    }) async =>
-        bytes,
+    compress:
+        ({
+          required Uint8List bytes,
+          required int minWidth,
+          required int minHeight,
+          required int quality,
+        }) async => bytes,
     upload: ({required String storagePath, required Uint8List bytes}) async =>
         'https://example.com/new.jpg',
   );

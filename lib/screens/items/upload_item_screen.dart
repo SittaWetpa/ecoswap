@@ -1129,7 +1129,9 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
                                 ),
                               )
                             : Text(
-                                _isEditMode ? 'Save changes' : 'Add to my swaps',
+                                _isEditMode
+                                    ? 'Save changes'
+                                    : 'Add to my swaps',
                               ),
                       ),
                     ),
