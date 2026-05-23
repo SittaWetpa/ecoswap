@@ -1,15 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:ecoswap/models/user.dart';
+import 'package:ecoswap/widgets/proximity_filter_sheet.dart'
+    show ProximityBucket;
 
-/// Bucket labels for proximity between two users.
-/// Ordered from most-relevant to least-relevant.
-enum ProximityBucket {
-  sameDistrict,
-  sameProvince,
-  nearbyProvinces,
-  allThailand,
-}
+export 'package:ecoswap/widgets/proximity_filter_sheet.dart'
+    show ProximityBucket;
 
 /// Scores proximity between two users using bucket-based logic.
 ///
