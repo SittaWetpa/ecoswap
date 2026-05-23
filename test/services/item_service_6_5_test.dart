@@ -83,8 +83,11 @@ void main() {
 
       final result = await service.activeItemsForUser('uid-alice').first;
 
-      expect(result.any((i) => i.status == ItemStatus.traded), isFalse,
-          reason: 'traded items must never appear in activeItemsForUser');
+      expect(
+        result.any((i) => i.status == ItemStatus.traded),
+        isFalse,
+        reason: 'traded items must never appear in activeItemsForUser',
+      );
 
       await controller.close();
     });
@@ -104,8 +107,11 @@ void main() {
 
       final result = await service.activeItemsForUser('uid-alice').first;
 
-      expect(result.any((i) => i.status == ItemStatus.deleted), isFalse,
-          reason: 'deleted items must never appear in activeItemsForUser');
+      expect(
+        result.any((i) => i.status == ItemStatus.deleted),
+        isFalse,
+        reason: 'deleted items must never appear in activeItemsForUser',
+      );
 
       await controller.close();
     });
@@ -122,8 +128,7 @@ void main() {
     // the stream the service exposes is exactly what the override returns, and
     // that only active items appear when the stream is correctly filtered.
 
-    test(
-        'stream with active-only items returns all of them and none are '
+    test('stream with active-only items returns all of them and none are '
         'traded or deleted', () async {
       final controller = StreamController<List<Item>>();
       final service = _serviceWith(controller.stream);
@@ -138,8 +143,11 @@ void main() {
 
       final result = await service.activeItemsForUser('uid-alice').first;
 
-      expect(result.length, equals(3),
-          reason: 'all three active items must be present');
+      expect(
+        result.length,
+        equals(3),
+        reason: 'all three active items must be present',
+      );
       expect(result.every((i) => i.status == ItemStatus.active), isTrue);
       expect(result.any((i) => i.status == ItemStatus.traded), isFalse);
       expect(result.any((i) => i.status == ItemStatus.deleted), isFalse);
