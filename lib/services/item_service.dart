@@ -33,15 +33,24 @@ class ItemService {
   final ItemDocSoftDeleter? _softDeleteItemDoc;
   final FirebaseFirestore? _firestore;
 
+  /// Optional override for [activeItemsForUser] — used in unit tests to inject
+  /// a fake stream without requiring a real Firestore instance.
+  ///
+  /// When non-null, [activeItemsForUser] delegates entirely to this function
+  /// instead of querying Firestore.
+  final ActiveItemsStream? _activeItemsStreamOverride;
+
   ItemService({
     ItemDocWriter? itemDocWriter,
     ItemDocUpdater? itemDocUpdater,
     ItemDocSoftDeleter? itemDocSoftDeleter,
     FirebaseFirestore? firestore,
+    ActiveItemsStream? activeItemsStreamOverride,
   }) : _writeItemDoc = itemDocWriter ?? _defaultWriter(),
        _updateItemDoc = itemDocUpdater,
        _softDeleteItemDoc = itemDocSoftDeleter,
-       _firestore = firestore;
+       _firestore = firestore,
+       _activeItemsStreamOverride = activeItemsStreamOverride;
 
   FirebaseFirestore get _db => _firestore ?? FirebaseFirestore.instance;
 
@@ -140,7 +149,14 @@ class ItemService {
   /// deleted items.
   ///
   /// Used by WBS 6.3 (My Items) and WBS 6.5 (Item Status Lifecycle).
+  ///
+  /// When [activeItemsStreamOverride] was supplied at construction time that
+  /// function is called instead of querying Firestore, allowing unit tests to
+  /// inject a fake stream without a real Firebase project.
   Stream<List<Item>> activeItemsForUser(String uid) {
+    final override = _activeItemsStreamOverride;
+    if (override != null) return override(uid);
+
     return _db
         .collection('items')
         .where('ownerId', isEqualTo: uid)
