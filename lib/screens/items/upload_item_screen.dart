@@ -20,6 +20,7 @@ const _kTextPrimary = Color(0xFF1A1A1A);
 const _kTextSecondary = Color(0xFF6B6B66);
 const _kTextTertiary = Color(0xFFA0A09B);
 const _kDanger = Color(0xFFC44545);
+const _kDangerSoft = Color(0xFFFCEBEB);
 
 // ---------------------------------------------------------------------------
 // Typedefs — injectable for tests
@@ -524,6 +525,10 @@ class _CategoryPickerSheet extends StatelessWidget {
 
 /// Upload Item screen — WBS 6.2.
 ///
+/// Doubles as the Edit Item form when [initialItem] is provided (WBS 6.4).
+/// In edit mode the title changes to "Edit item", the submit label to
+/// "Save changes", and a destructive "Delete item" button appears.
+///
 /// Fields:
 ///   - Photo (required)
 ///   - Name (required, 1–60 chars)
@@ -533,8 +538,9 @@ class _CategoryPickerSheet extends StatelessWidget {
 ///   - Description (optional, max 280 chars)
 ///   - Wants (optional, max 140 chars)
 ///
-/// On submit, writes to `/items/{itemId}` with `status: 'active'` and
-/// `ownerId: currentUid`.
+/// On submit (create mode): writes to `/items/{itemId}` with `status: 'active'`
+/// and `ownerId: currentUid`.
+/// On submit (edit mode): updates only the user-editable fields.
 ///
 /// All dependencies are injectable for tests.
 class UploadItemScreen extends StatefulWidget {
@@ -551,12 +557,22 @@ class UploadItemScreen extends StatefulWidget {
   /// navigation intent.
   final VoidCallback? onSubmitSuccess;
 
+  /// When set, the screen operates in edit mode: fields are pre-filled from
+  /// this item, the form calls [ItemService.updateItem] on save, and a
+  /// destructive delete button is shown.
+  final Item? initialItem;
+
+  /// Called after a successful soft-delete; used by tests to verify intent.
+  final VoidCallback? onDeleteSuccess;
+
   const UploadItemScreen({
     super.key,
     this.photoService,
     this.itemService,
     this.getCurrentUid,
     this.onSubmitSuccess,
+    this.initialItem,
+    this.onDeleteSuccess,
   });
 
   @override
@@ -588,6 +604,28 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
 
   // Form key for validation
   final _formKey = GlobalKey<FormState>();
+
+  bool get _isEditMode => widget.initialItem != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initialItem;
+    if (initial != null) {
+      _photoUrl = initial.photoUrl;
+      _hasPhoto = initial.photoUrl.isNotEmpty;
+      _nameController.text = initial.name;
+      _category = initial.category;
+      _condition = initial.condition;
+      if (initial.weight != null) {
+        _weightController.text = initial.weight!.toStringAsFixed(
+          initial.weight! == initial.weight!.truncateToDouble() ? 0 : 1,
+        );
+      }
+      _descController.text = initial.description ?? '';
+      _wantsController.text = initial.wants ?? '';
+    }
+  }
 
   @override
   void dispose() {
@@ -704,23 +742,78 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
       final descText = _descController.text.trim();
       final wantsText = _wantsController.text.trim();
 
-      await _itemService.createItem(
-        ownerId: uid,
-        name: _nameController.text.trim(),
-        category: _category!,
-        condition: _condition!,
-        photoUrl: _photoUrl,
-        weight: weight,
-        description: descText.isEmpty ? null : descText,
-        wants: wantsText.isEmpty ? null : wantsText,
-      );
+      if (_isEditMode) {
+        await _itemService.updateItem(
+          widget.initialItem!.id,
+          name: _nameController.text.trim(),
+          category: _category!,
+          condition: _condition!,
+          photoUrl: _photoUrl,
+          weight: weight,
+          description: descText.isEmpty ? null : descText,
+          wants: wantsText.isEmpty ? null : wantsText,
+        );
+      } else {
+        await _itemService.createItem(
+          ownerId: uid,
+          name: _nameController.text.trim(),
+          category: _category!,
+          condition: _condition!,
+          photoUrl: _photoUrl,
+          weight: weight,
+          description: descText.isEmpty ? null : descText,
+          wants: wantsText.isEmpty ? null : wantsText,
+        );
+      }
 
       if (!mounted) return;
 
-      // Notify test hook
       widget.onSubmitSuccess?.call();
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Something went wrong. Please try again.'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
 
-      // Navigate back to My Items (caller handles routing)
+  Future<void> _handleDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete item?'),
+        content: const Text(
+          'This will remove the item from your swaps. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            key: const Key('deleteCancelButton'),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            key: const Key('deleteConfirmButton'),
+            style: TextButton.styleFrom(foregroundColor: _kDanger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      await _itemService.softDeleteItem(widget.initialItem!.id);
+      if (!mounted) return;
+      widget.onDeleteSuccess?.call();
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
@@ -801,9 +894,9 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
         backgroundColor: _kSurface,
         elevation: 0,
         leading: const BackButton(color: _kTextPrimary),
-        title: const Text(
-          'Add an item',
-          style: TextStyle(
+        title: Text(
+          _isEditMode ? 'Edit item' : 'Add an item',
+          style: const TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w600,
             color: _kTextPrimary,
@@ -992,7 +1085,7 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
               ),
             ),
 
-            // Sticky bottom — submit button
+            // Sticky bottom — submit (+ optional delete in edit mode)
             Container(
               decoration: const BoxDecoration(
                 color: _kSurface,
@@ -1001,39 +1094,73 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
               padding: const EdgeInsets.all(16),
               child: SafeArea(
                 top: false,
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    key: const Key('submitButton'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _kGreenPrimary,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: _kGreenPrimary.withValues(
-                        alpha: 0.4,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        key: const Key('submitButton'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _kGreenPrimary,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: _kGreenPrimary.withValues(
+                            alpha: 0.4,
+                          ),
+                          disabledForegroundColor: Colors.white,
+                          textStyle: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                        ),
+                        onPressed: _isSubmitting ? null : _handleSubmit,
+                        child: _isSubmitting
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(
+                                _isEditMode
+                                    ? 'Save changes'
+                                    : 'Add to my swaps',
+                              ),
                       ),
-                      disabledForegroundColor: Colors.white,
-                      textStyle: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      elevation: 0,
                     ),
-                    onPressed: _isSubmitting ? null : _handleSubmit,
-                    child: _isSubmitting
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
+                    if (_isEditMode) ...[
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          key: const Key('deleteButton'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _kDangerSoft,
+                            foregroundColor: _kDanger,
+                            elevation: 0,
+                            textStyle: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
                             ),
-                          )
-                        : const Text('Add to my swaps'),
-                  ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: _isSubmitting ? null : _handleDelete,
+                          icon: const Icon(Icons.delete_outline, size: 18),
+                          label: const Text('Delete item'),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),

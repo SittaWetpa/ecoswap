@@ -5,6 +5,13 @@ import '../models/item.dart';
 /// closure instead of trying to fake the sealed FirebaseFirestore hierarchy.
 typedef ItemDocWriter = Future<String> Function(Map<String, dynamic> data);
 
+/// Typedef for updating an existing item document by ID.
+typedef ItemDocUpdater =
+    Future<void> Function(String itemId, Map<String, dynamic> data);
+
+/// Typedef for soft-deleting an item document by ID.
+typedef ItemDocSoftDeleter = Future<void> Function(String itemId);
+
 /// Returns the default writer that adds to the real Firestore items collection.
 ItemDocWriter _defaultWriter() {
   return (Map<String, dynamic> data) async {
@@ -22,11 +29,19 @@ typedef ActiveItemsStream = Stream<List<Item>> Function(String uid);
 /// so tests can run without a real Firebase project.
 class ItemService {
   final ItemDocWriter _writeItemDoc;
+  final ItemDocUpdater? _updateItemDoc;
+  final ItemDocSoftDeleter? _softDeleteItemDoc;
   final FirebaseFirestore? _firestore;
 
-  ItemService({ItemDocWriter? itemDocWriter, FirebaseFirestore? firestore})
-    : _writeItemDoc = itemDocWriter ?? _defaultWriter(),
-      _firestore = firestore;
+  ItemService({
+    ItemDocWriter? itemDocWriter,
+    ItemDocUpdater? itemDocUpdater,
+    ItemDocSoftDeleter? itemDocSoftDeleter,
+    FirebaseFirestore? firestore,
+  }) : _writeItemDoc = itemDocWriter ?? _defaultWriter(),
+       _updateItemDoc = itemDocUpdater,
+       _softDeleteItemDoc = itemDocSoftDeleter,
+       _firestore = firestore;
 
   FirebaseFirestore get _db => _firestore ?? FirebaseFirestore.instance;
 
@@ -70,6 +85,55 @@ class ItemService {
     };
 
     return _writeItemDoc(data);
+  }
+
+  /// Updates mutable fields on an existing item document.
+  ///
+  /// Only updates user-editable fields — never touches [ownerId], [status],
+  /// or [createdAt].
+  Future<void> updateItem(
+    String itemId, {
+    required String name,
+    required ItemCategory category,
+    required ItemCondition condition,
+    required String photoUrl,
+    double? weight,
+    String? description,
+    String? wants,
+  }) async {
+    final data = <String, dynamic>{
+      'name': name.trim(),
+      'category': category.value,
+      'condition': condition.value,
+      'weight': weight,
+      'description': description?.trim().isEmpty == true
+          ? null
+          : description?.trim(),
+      'wants': wants?.trim().isEmpty == true ? null : wants?.trim(),
+      'photoUrl': photoUrl,
+    };
+
+    final updater = _updateItemDoc;
+    if (updater != null) {
+      await updater(itemId, data);
+    } else {
+      await _db.collection('items').doc(itemId).update(data);
+    }
+  }
+
+  /// Soft-deletes an item by writing [status: 'deleted'].
+  ///
+  /// Does NOT remove the document so historical references in [/matches/] and
+  /// [/trades/] remain valid (per WBS 6.4 scope).
+  Future<void> softDeleteItem(String itemId) async {
+    final deleter = _softDeleteItemDoc;
+    if (deleter != null) {
+      await deleter(itemId);
+    } else {
+      await _db.collection('items').doc(itemId).update({
+        'status': ItemStatus.deleted.value,
+      });
+    }
   }
 
   /// Returns a stream of all active items for [uid], excluding traded and
