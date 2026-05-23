@@ -170,8 +170,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _validateName(String name) {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return 'Display name is required.';
-    if (trimmed.length > 40)
+    if (trimmed.length > 40) {
       return 'Display name must be 40 characters or fewer.';
+    }
     return null;
   }
 
