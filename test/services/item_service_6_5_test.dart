@@ -59,59 +59,44 @@ void main() {
     });
 
     // ── Test 2: traded items are excluded ─────────────────────────────────────
+    // Injects a mixed stream (active + traded) to prove the client-side guard
+    // in the override path actually filters — if the .where() were removed,
+    // 't1' would appear in the result and the test would fail.
 
     test('excludes items with status=traded', () async {
       final controller = StreamController<List<Item>>();
       final service = _serviceWith(controller.stream);
 
-      // The stream represents the Firestore query result — already filtered
-      // server-side by status == 'active'.  We emit only what the query would
-      // return.  To test the exclusion we emit a mixed list and rely on the
-      // fact that the real query would never return traded items; here we
-      // verify the contract by injecting a stream that mirrors what would
-      // happen if the server filter were absent, then confirm the method
-      // contract: when the override emits traded items they must not appear
-      // in a correctly filtered production query.
-      //
-      // For the unit test, we verify the production path by injecting a stream
-      // that returns ONLY active items (as Firestore would) and confirm the
-      // result contains no traded items.
       controller.add([
         _item(id: 'a1', status: ItemStatus.active),
-        // traded item is NOT in this list — matches Firestore where-filter
+        _item(id: 't1', status: ItemStatus.traded), // must be filtered out
       ]);
 
       final result = await service.activeItemsForUser('uid-alice').first;
 
-      expect(
-        result.any((i) => i.status == ItemStatus.traded),
-        isFalse,
-        reason: 'traded items must never appear in activeItemsForUser',
-      );
+      expect(result.map((i) => i.id).toList(), equals(['a1']));
+      expect(result.any((i) => i.status == ItemStatus.traded), isFalse);
 
       await controller.close();
     });
 
     // ── Test 3: deleted items are excluded ────────────────────────────────────
+    // Injects a mixed stream (active + deleted) to prove the client-side guard
+    // fires — if the .where() were removed, 'd1' would survive into the result.
 
     test('excludes items with status=deleted', () async {
       final controller = StreamController<List<Item>>();
       final service = _serviceWith(controller.stream);
 
-      // Firestore query filters by status == 'active', so deleted items are
-      // never returned.  The stream correctly reflects this.
       controller.add([
         _item(id: 'a1', status: ItemStatus.active),
-        // deleted item is NOT in this list — matches Firestore where-filter
+        _item(id: 'd1', status: ItemStatus.deleted), // must be filtered out
       ]);
 
       final result = await service.activeItemsForUser('uid-alice').first;
 
-      expect(
-        result.any((i) => i.status == ItemStatus.deleted),
-        isFalse,
-        reason: 'deleted items must never appear in activeItemsForUser',
-      );
+      expect(result.map((i) => i.id).toList(), equals(['a1']));
+      expect(result.any((i) => i.status == ItemStatus.deleted), isFalse);
 
       await controller.close();
     });

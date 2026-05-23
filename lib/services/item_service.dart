@@ -155,7 +155,11 @@ class ItemService {
   /// inject a fake stream without a real Firebase project.
   Stream<List<Item>> activeItemsForUser(String uid) {
     final override = _activeItemsStreamOverride;
-    if (override != null) return override(uid);
+    if (override != null) {
+      return override(uid).map(
+        (items) => items.where((i) => i.status == ItemStatus.active).toList(),
+      );
+    }
 
     return _db
         .collection('items')
