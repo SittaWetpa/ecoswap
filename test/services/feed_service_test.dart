@@ -109,9 +109,7 @@ void main() {
   // -------------------------------------------------------------------------
   group('FeedService — self exclusion', () {
     test('current user never appears in their own feed', () async {
-      final service = _makeService(
-        allUsers: [_me, _sameDistrict],
-      );
+      final service = _makeService(allUsers: [_me, _sameDistrict]);
 
       final results = await service.candidatesForUser(
         _me,
@@ -192,20 +190,22 @@ void main() {
       expect(uids, contains(_sameProvince.uid));
     });
 
-    test('all users with no items excluded — empty result when no one has items',
-        () async {
-      final service = _makeService(
-        allUsers: [_sameDistrict, _sameProvince],
-        usersWithNoItems: {_sameDistrict.uid, _sameProvince.uid},
-      );
+    test(
+      'all users with no items excluded — empty result when no one has items',
+      () async {
+        final service = _makeService(
+          allUsers: [_sameDistrict, _sameProvince],
+          usersWithNoItems: {_sameDistrict.uid, _sameProvince.uid},
+        );
 
-      final results = await service.candidatesForUser(
-        _me,
-        ProximityBucket.allThailand,
-      );
+        final results = await service.candidatesForUser(
+          _me,
+          ProximityBucket.allThailand,
+        );
 
-      expect(results, isEmpty);
-    });
+        expect(results, isEmpty);
+      },
+    );
   });
 
   // -------------------------------------------------------------------------
@@ -213,123 +213,137 @@ void main() {
   // -------------------------------------------------------------------------
   group('FeedService — proximity filter', () {
     test(
-        'sameDistrict bucket returns fewer results than allThailand bucket',
-        () async {
-      // sameDistrict should include _sameDistrict only.
-      // allThailand includes _sameDistrict, _sameProvince, _nearbyProvince, _farAway.
-      final service = _makeService(
-        allUsers: [_sameDistrict, _sameProvince, _nearbyProvince, _farAway],
-      );
+      'sameDistrict bucket returns fewer results than allThailand bucket',
+      () async {
+        // sameDistrict should include _sameDistrict only.
+        // allThailand includes _sameDistrict, _sameProvince, _nearbyProvince, _farAway.
+        final service = _makeService(
+          allUsers: [_sameDistrict, _sameProvince, _nearbyProvince, _farAway],
+        );
 
-      final districtResults = await service.candidatesForUser(
-        _me,
-        ProximityBucket.sameDistrict,
-      );
-      final allResults = await service.candidatesForUser(
-        _me,
-        ProximityBucket.allThailand,
-      );
+        final districtResults = await service.candidatesForUser(
+          _me,
+          ProximityBucket.sameDistrict,
+        );
+        final allResults = await service.candidatesForUser(
+          _me,
+          ProximityBucket.allThailand,
+        );
 
-      expect(districtResults.length, lessThan(allResults.length));
-    });
+        expect(districtResults.length, lessThan(allResults.length));
+      },
+    );
 
-    test('sameDistrict only returns users in exactly the same district',
-        () async {
-      final service = _makeService(
-        allUsers: [_sameDistrict, _sameProvince, _nearbyProvince, _farAway],
-      );
+    test(
+      'sameDistrict only returns users in exactly the same district',
+      () async {
+        final service = _makeService(
+          allUsers: [_sameDistrict, _sameProvince, _nearbyProvince, _farAway],
+        );
 
-      final results = await service.candidatesForUser(
-        _me,
-        ProximityBucket.sameDistrict,
-      );
+        final results = await service.candidatesForUser(
+          _me,
+          ProximityBucket.sameDistrict,
+        );
 
-      final uids = results.map((u) => u.uid).toList();
-      expect(uids, contains(_sameDistrict.uid));
-      expect(uids, isNot(contains(_sameProvince.uid)));
-      expect(uids, isNot(contains(_nearbyProvince.uid)));
-      expect(uids, isNot(contains(_farAway.uid)));
-    });
+        final uids = results.map((u) => u.uid).toList();
+        expect(uids, contains(_sameDistrict.uid));
+        expect(uids, isNot(contains(_sameProvince.uid)));
+        expect(uids, isNot(contains(_nearbyProvince.uid)));
+        expect(uids, isNot(contains(_farAway.uid)));
+      },
+    );
 
-    test('sameProvince includes same-district and same-province users',
-        () async {
-      final service = _makeService(
-        allUsers: [_sameDistrict, _sameProvince, _nearbyProvince, _farAway],
-      );
+    test(
+      'sameProvince includes same-district and same-province users',
+      () async {
+        final service = _makeService(
+          allUsers: [_sameDistrict, _sameProvince, _nearbyProvince, _farAway],
+        );
 
-      final results = await service.candidatesForUser(
-        _me,
-        ProximityBucket.sameProvince,
-      );
+        final results = await service.candidatesForUser(
+          _me,
+          ProximityBucket.sameProvince,
+        );
 
-      final uids = results.map((u) => u.uid).toList();
-      expect(uids, contains(_sameDistrict.uid));
-      expect(uids, contains(_sameProvince.uid));
-      expect(uids, isNot(contains(_nearbyProvince.uid)));
-      expect(uids, isNot(contains(_farAway.uid)));
-    });
+        final uids = results.map((u) => u.uid).toList();
+        expect(uids, contains(_sameDistrict.uid));
+        expect(uids, contains(_sameProvince.uid));
+        expect(uids, isNot(contains(_nearbyProvince.uid)));
+        expect(uids, isNot(contains(_farAway.uid)));
+      },
+    );
 
-    test('nearbyProvinces includes same-district, same-province, and nearby',
-        () async {
-      final service = _makeService(
-        allUsers: [_sameDistrict, _sameProvince, _nearbyProvince, _farAway],
-      );
+    test(
+      'nearbyProvinces includes same-district, same-province, and nearby',
+      () async {
+        final service = _makeService(
+          allUsers: [_sameDistrict, _sameProvince, _nearbyProvince, _farAway],
+        );
 
-      final results = await service.candidatesForUser(
-        _me,
-        ProximityBucket.nearbyProvinces,
-      );
+        final results = await service.candidatesForUser(
+          _me,
+          ProximityBucket.nearbyProvinces,
+        );
 
-      final uids = results.map((u) => u.uid).toList();
-      expect(uids, contains(_sameDistrict.uid));
-      expect(uids, contains(_sameProvince.uid));
-      expect(uids, contains(_nearbyProvince.uid));
-      expect(uids, isNot(contains(_farAway.uid)));
-    });
+        final uids = results.map((u) => u.uid).toList();
+        expect(uids, contains(_sameDistrict.uid));
+        expect(uids, contains(_sameProvince.uid));
+        expect(uids, contains(_nearbyProvince.uid));
+        expect(uids, isNot(contains(_farAway.uid)));
+      },
+    );
 
-    test('allThailand includes every non-self, non-swiped user with items',
-        () async {
-      final service = _makeService(
-        allUsers: [_sameDistrict, _sameProvince, _nearbyProvince, _farAway],
-      );
+    test(
+      'allThailand includes every non-self, non-swiped user with items',
+      () async {
+        final service = _makeService(
+          allUsers: [_sameDistrict, _sameProvince, _nearbyProvince, _farAway],
+        );
 
-      final results = await service.candidatesForUser(
-        _me,
-        ProximityBucket.allThailand,
-      );
+        final results = await service.candidatesForUser(
+          _me,
+          ProximityBucket.allThailand,
+        );
 
-      final uids = results.map((u) => u.uid).toList();
-      expect(uids, containsAll([
-        _sameDistrict.uid,
-        _sameProvince.uid,
-        _nearbyProvince.uid,
-        _farAway.uid,
-      ]));
-    });
+        final uids = results.map((u) => u.uid).toList();
+        expect(
+          uids,
+          containsAll([
+            _sameDistrict.uid,
+            _sameProvince.uid,
+            _nearbyProvince.uid,
+            _farAway.uid,
+          ]),
+        );
+      },
+    );
   });
 
   // -------------------------------------------------------------------------
   // 5. Results sorted by bucket precedence (closest first)
   // -------------------------------------------------------------------------
   group('FeedService — sort order', () {
-    test('results are sorted by proximity bucket ascending (closest first)',
-        () async {
-      // allThailand includes all four, they should be sorted:
-      // sameDistrict(0) < sameProvince(1) < nearbyProvinces(2) < allThailand(3)
-      final service = _makeService(
-        allUsers: [_farAway, _nearbyProvince, _sameProvince, _sameDistrict],
-      );
+    test(
+      'results are sorted by proximity bucket ascending (closest first)',
+      () async {
+        // allThailand includes all four, they should be sorted:
+        // sameDistrict(0) < sameProvince(1) < nearbyProvinces(2) < allThailand(3)
+        final service = _makeService(
+          allUsers: [_farAway, _nearbyProvince, _sameProvince, _sameDistrict],
+        );
 
-      final results = await service.candidatesForUser(
-        _me,
-        ProximityBucket.allThailand,
-      );
+        final results = await service.candidatesForUser(
+          _me,
+          ProximityBucket.allThailand,
+        );
 
-      expect(results, hasLength(4));
-      // First must be sameDistrict, last must be farAway (allThailand bucket).
-      expect(results.first.uid, _sameDistrict.uid);
-      expect(results.last.uid, _farAway.uid);
-    });
+        expect(results, hasLength(4));
+        // First must be sameDistrict, last must be farAway (allThailand bucket).
+        expect(results.first.uid, _sameDistrict.uid);
+        expect(results.last.uid, _farAway.uid);
+      },
+    );
 
     test('within the same bucket, relative order is stable', () async {
       // Two users in the same province (both sameProvince bucket).
@@ -339,9 +353,7 @@ void main() {
         districtId: '1003',
       );
 
-      final service = _makeService(
-        allUsers: [_sameProvince, provinceUser2],
-      );
+      final service = _makeService(allUsers: [_sameProvince, provinceUser2]);
 
       final results = await service.candidatesForUser(
         _me,
@@ -355,26 +367,28 @@ void main() {
       expect(uids, containsAll([_sameProvince.uid, 'province-2']));
     });
 
-    test('nearbyProvince user appears after same-district and same-province',
-        () async {
-      final service = _makeService(
-        allUsers: [_nearbyProvince, _sameDistrict, _sameProvince],
-      );
+    test(
+      'nearbyProvince user appears after same-district and same-province',
+      () async {
+        final service = _makeService(
+          allUsers: [_nearbyProvince, _sameDistrict, _sameProvince],
+        );
 
-      final results = await service.candidatesForUser(
-        _me,
-        ProximityBucket.allThailand,
-      );
+        final results = await service.candidatesForUser(
+          _me,
+          ProximityBucket.allThailand,
+        );
 
-      final uids = results.map((u) => u.uid).toList();
-      final nearbyIndex = uids.indexOf(_nearbyProvince.uid);
-      final sameDistrictIndex = uids.indexOf(_sameDistrict.uid);
-      final sameProvinceIndex = uids.indexOf(_sameProvince.uid);
+        final uids = results.map((u) => u.uid).toList();
+        final nearbyIndex = uids.indexOf(_nearbyProvince.uid);
+        final sameDistrictIndex = uids.indexOf(_sameDistrict.uid);
+        final sameProvinceIndex = uids.indexOf(_sameProvince.uid);
 
-      // Closer buckets must come before farther ones.
-      expect(sameDistrictIndex, lessThan(nearbyIndex));
-      expect(sameProvinceIndex, lessThan(nearbyIndex));
-    });
+        // Closer buckets must come before farther ones.
+        expect(sameDistrictIndex, lessThan(nearbyIndex));
+        expect(sameProvinceIndex, lessThan(nearbyIndex));
+      },
+    );
   });
 
   // -------------------------------------------------------------------------
@@ -382,39 +396,40 @@ void main() {
   // -------------------------------------------------------------------------
   group('FeedService — combined filters', () {
     test(
-        'excludes self, swiped, zero-items, out-of-range users simultaneously',
-        () async {
-      final noItemsUser = _makeUser(
-        uid: 'no-items',
-        provinceId: '10',
-        districtId: '1001',
-      );
-      final swipedUser = _makeUser(
-        uid: 'swiped',
-        provinceId: '10',
-        districtId: '1001',
-      );
+      'excludes self, swiped, zero-items, out-of-range users simultaneously',
+      () async {
+        final noItemsUser = _makeUser(
+          uid: 'no-items',
+          provinceId: '10',
+          districtId: '1001',
+        );
+        final swipedUser = _makeUser(
+          uid: 'swiped',
+          provinceId: '10',
+          districtId: '1001',
+        );
 
-      final service = _makeService(
-        allUsers: [
+        final service = _makeService(
+          allUsers: [
+            _me,
+            noItemsUser,
+            swipedUser,
+            _farAway, // out of range for sameDistrict
+            _sameDistrict, // the only valid candidate
+          ],
+          swipedIds: {swipedUser.uid},
+          usersWithNoItems: {noItemsUser.uid},
+        );
+
+        final results = await service.candidatesForUser(
           _me,
-          noItemsUser,
-          swipedUser,
-          _farAway, // out of range for sameDistrict
-          _sameDistrict, // the only valid candidate
-        ],
-        swipedIds: {swipedUser.uid},
-        usersWithNoItems: {noItemsUser.uid},
-      );
+          ProximityBucket.sameDistrict,
+        );
 
-      final results = await service.candidatesForUser(
-        _me,
-        ProximityBucket.sameDistrict,
-      );
-
-      expect(results, hasLength(1));
-      expect(results.first.uid, _sameDistrict.uid);
-    });
+        expect(results, hasLength(1));
+        expect(results.first.uid, _sameDistrict.uid);
+      },
+    );
 
     test('empty result when all candidates are filtered out', () async {
       final service = _makeService(

@@ -86,8 +86,7 @@ class FeedService {
         .where((u) => u.uid != me.uid)
         .where((u) => !swipedIds.contains(u.uid))
         .where(
-          (u) =>
-              _proximityService.bucketFor(me, u).index <= maxBucket.index,
+          (u) => _proximityService.bucketFor(me, u).index <= maxBucket.index,
         )
         .toList();
 
@@ -118,8 +117,7 @@ class FeedService {
   /// Live Firestore users fetcher.
   static UsersFetcher _defaultUsersFetcher() {
     return () async {
-      final snap =
-          await FirebaseFirestore.instance.collection('users').get();
+      final snap = await FirebaseFirestore.instance.collection('users').get();
       return snap.docs
           .map((doc) => User.fromJson(doc.data(), uid: doc.id))
           .toList();
