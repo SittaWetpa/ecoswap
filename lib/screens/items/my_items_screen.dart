@@ -369,10 +369,8 @@ class MyItemsScreen extends StatelessWidget {
                   childAspectRatio: 0.72,
                 ),
                 delegate: SliverChildBuilderDelegate(
-                  (context, index) => _ItemTile(
-                    item: items[index],
-                    onEdit: onEdit,
-                  ),
+                  (context, index) =>
+                      _ItemTile(item: items[index], onEdit: onEdit),
                   childCount: items.length,
                 ),
               ),

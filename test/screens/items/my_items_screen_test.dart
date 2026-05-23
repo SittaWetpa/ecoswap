@@ -93,7 +93,8 @@ void main() {
         expect(
           opacityWidgets.any((o) => o.opacity < 1.0),
           isTrue,
-          reason: 'At least one Opacity widget with opacity < 1.0 expected for '
+          reason:
+              'At least one Opacity widget with opacity < 1.0 expected for '
               'the traded item',
         );
 
@@ -115,10 +116,7 @@ void main() {
       expect(find.text('Add your first item'), findsOneWidget);
 
       // Grid count text should NOT be visible.
-      expect(
-        find.textContaining('items · all visible'),
-        findsNothing,
-      );
+      expect(find.textContaining('items · all visible'), findsNothing);
 
       await controller.close();
     });
@@ -143,7 +141,10 @@ void main() {
       expect(find.text('Deleted Item'), findsNothing);
 
       // Count line should say 1 item, not 2.
-      expect(find.text('1 items · all visible to nearby swappers'), findsOneWidget);
+      expect(
+        find.text('1 items · all visible to nearby swappers'),
+        findsOneWidget,
+      );
 
       await controller.close();
     });
