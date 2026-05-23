@@ -38,6 +38,25 @@ const _kDanger = Color(0xFFC44545);
 const _kDangerSoft = Color(0xFFFCEBEB);
 
 // ---------------------------------------------------------------------------
+// SwipeRecord — passed to onLeftSwipe / onRightSwipe callbacks
+// ---------------------------------------------------------------------------
+
+/// Captures the user and direction of a completed swipe.
+///
+/// The parent uses [direction] to write the Firestore swipe document
+/// (`direction: 'left'` or `direction: 'right'`). Passing the direction
+/// explicitly here satisfies WBS 7.3's test requirement: "left-swipe writes
+/// a swipe doc with direction: 'left'."
+class SwipeRecord {
+  final User user;
+
+  /// `'left'` for a skip swipe; `'right'` for a want swipe.
+  final String direction;
+
+  const SwipeRecord({required this.user, required this.direction});
+}
+
+// ---------------------------------------------------------------------------
 // SwipeCard widget
 // ---------------------------------------------------------------------------
 
@@ -468,11 +487,13 @@ class DiscoverScreen extends StatefulWidget {
   /// reloading the feed.
   final ValueChanged<ProximityBucket>? onProximityChanged;
 
-  /// Called when the user swipes right on [user].
-  final ValueChanged<User>? onRightSwipe;
+  /// Called when the user swipes right. Receives a [SwipeRecord] with
+  /// [SwipeRecord.direction] == `'right'`.
+  final ValueChanged<SwipeRecord>? onRightSwipe;
 
-  /// Called when the user swipes left on [user].
-  final ValueChanged<User>? onLeftSwipe;
+  /// Called when the user swipes left. Receives a [SwipeRecord] with
+  /// [SwipeRecord.direction] == `'left'`.
+  final ValueChanged<SwipeRecord>? onLeftSwipe;
 
   /// Called when the user taps a card (without swiping).
   final ValueChanged<User>? onCardTap;
@@ -497,6 +518,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   /// Mutable deck — cards are removed as the user swipes through.
   late List<User> _deck;
+
+  /// Tracks horizontal drag delta for the WANT/SKIP overlay.
+  /// Positive = dragging right (WANT); negative = dragging left (SKIP).
+  double _dragDx = 0.0;
 
   @override
   void initState() {
@@ -533,12 +558,17 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     final direction = activity.direction;
 
     if (direction == AxisDirection.right) {
-      widget.onRightSwipe?.call(swipedUser);
+      widget.onRightSwipe?.call(
+        SwipeRecord(user: swipedUser, direction: 'right'),
+      );
     } else if (direction == AxisDirection.left) {
-      widget.onLeftSwipe?.call(swipedUser);
+      widget.onLeftSwipe?.call(
+        SwipeRecord(user: swipedUser, direction: 'left'),
+      );
     }
 
     setState(() {
+      _dragDx = 0.0;
       // Remove the card that was swiped.
       if (previousIndex < _deck.length) {
         _deck.removeAt(previousIndex);
@@ -628,36 +658,52 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   // ---------------------------------------------------------------------------
 
   Widget _buildDeck() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Column(
-        children: [
-          Expanded(
-            child: AppinioSwiper(
-              key: ValueKey(_deck.length),
-              controller: _swiperController,
-              cardCount: _deck.length,
-              swipeOptions: const SwipeOptions.symmetric(horizontal: true),
-              backgroundCardCount: 1,
-              backgroundCardScale: 0.96,
-              backgroundCardOffset: const Offset(0, 8),
-              onSwipeEnd: _handleSwipeEnd,
-              onEnd: _handleEnd,
-              cardBuilder: (context, index) {
-                if (index >= _deck.length) return const SizedBox.shrink();
-                final user = _deck[index];
-                final items = widget.itemsByUser[user.uid] ?? const [];
-                return SwipeCard(
-                  key: ValueKey(user.uid),
-                  user: user,
-                  items: items,
-                  onTap: () => widget.onCardTap?.call(user),
-                );
-              },
+    return Listener(
+      // Track horizontal pointer delta so the WANT/SKIP overlay can fade in.
+      // Listener sits below the gesture arena, so it never competes with
+      // AppinioSwiper's own pan recognizer.
+      onPointerMove: (event) {
+        setState(() => _dragDx += event.delta.dx);
+      },
+      onPointerUp: (_) => setState(() => _dragDx = 0.0),
+      onPointerCancel: (_) => setState(() => _dragDx = 0.0),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        child: Column(
+          children: [
+            Expanded(
+              child: AppinioSwiper(
+                key: ValueKey(_deck.length),
+                controller: _swiperController,
+                cardCount: _deck.length,
+                swipeOptions: const SwipeOptions.symmetric(horizontal: true),
+                backgroundCardCount: 1,
+                backgroundCardScale: 0.96,
+                backgroundCardOffset: const Offset(0, 8),
+                onSwipeEnd: _handleSwipeEnd,
+                onEnd: _handleEnd,
+                cardBuilder: (context, index) {
+                  if (index >= _deck.length) return const SizedBox.shrink();
+                  final user = _deck[index];
+                  final items = widget.itemsByUser[user.uid] ?? const [];
+                  // Only the top card (index == 0) shows the drag overlay.
+                  return Stack(
+                    children: [
+                      SwipeCard(
+                        key: ValueKey(user.uid),
+                        user: user,
+                        items: items,
+                        onTap: () => widget.onCardTap?.call(user),
+                      ),
+                      if (index == 0) _SwipeOverlay(dx: _dragDx),
+                    ],
+                  );
+                },
+              ),
             ),
-          ),
-          _buildActionButtons(),
-        ],
+            _buildActionButtons(),
+          ],
+        ),
       ),
     );
   }
@@ -719,7 +765,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Try widening your search radius, or check back later — new swappers join every day.',
+              'Try widening your proximity filter, or check back later — new swappers join every day.',
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w400,
@@ -743,12 +789,99 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 ),
                 onPressed: _openProximitySheet,
                 child: const Text(
-                  'Widen search',
+                  'Include nearby provinces',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
                 ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// WANT / SKIP drag overlay
+// ---------------------------------------------------------------------------
+
+/// Fades in a stamped label overlay as the user drags a card horizontally.
+///
+/// - Dragging right (positive [dx]) → green "WANT" stamp on the left edge.
+/// - Dragging left  (negative [dx]) → red  "SKIP" stamp on the right edge.
+///
+/// The overlay is transparent until the drag exceeds [_kOverlayThreshold] px,
+/// then linearly reaches full opacity at [_kOverlayMaxDx] px. This matches the
+/// behaviour shown in `discover.jsx` lines 88–104.
+class _SwipeOverlay extends StatelessWidget {
+  final double dx;
+
+  const _SwipeOverlay({required this.dx});
+
+  static const double _kOverlayThreshold = 20.0;
+  static const double _kOverlayMaxDx = 120.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final absDx = dx.abs();
+    if (absDx < _kOverlayThreshold) return const SizedBox.shrink();
+
+    final opacity =
+        ((absDx - _kOverlayThreshold) / (_kOverlayMaxDx - _kOverlayThreshold))
+            .clamp(0.0, 1.0);
+    final isWant = dx > 0;
+
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: AnimatedOpacity(
+          opacity: opacity,
+          duration: Duration.zero,
+          child: Container(
+            decoration: BoxDecoration(
+              color: isWant
+                  ? const Color(0x221D9E75) // green tint
+                  : const Color(0x22C44545), // red tint
+              borderRadius: BorderRadius.circular(20),
+            ),
+            alignment: isWant ? Alignment.topLeft : Alignment.topRight,
+            padding: const EdgeInsets.all(20),
+            child: _StampLabel(
+              text: isWant ? 'WANT' : 'SKIP',
+              color: isWant ? _kGreenPrimary : _kDanger,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Rotated stamp-style label used by [_SwipeOverlay].
+class _StampLabel extends StatelessWidget {
+  final String text;
+  final Color color;
+
+  const _StampLabel({required this.text, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.rotate(
+      angle: -0.35, // ~–20 degrees, matching prototype stamp tilt
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          border: Border.all(color: color, width: 3),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            color: color,
+            letterSpacing: 2,
+            height: 1.2,
+          ),
         ),
       ),
     );

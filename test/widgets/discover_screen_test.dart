@@ -78,8 +78,8 @@ Widget _wrap(Widget child) {
 Widget _buildScreen({
   List<User>? candidates,
   Map<String, List<Item>>? itemsByUser,
-  ValueChanged<User>? onRightSwipe,
-  ValueChanged<User>? onLeftSwipe,
+  ValueChanged<SwipeRecord>? onRightSwipe,
+  ValueChanged<SwipeRecord>? onLeftSwipe,
   ValueChanged<User>? onCardTap,
   ValueChanged<ProximityBucket>? onProximityChanged,
   ProximityBucket bucket = ProximityBucket.sameProvince,
@@ -116,8 +116,8 @@ void main() {
     testWidgets(
       'right-swipe gesture calls onRightSwipe with the correct user',
       (tester) async {
-        final swiped = <User>[];
-        await tester.pumpWidget(_buildScreen(onRightSwipe: swiped.add));
+        final records = <SwipeRecord>[];
+        await tester.pumpWidget(_buildScreen(onRightSwipe: records.add));
         await tester.pumpAndSettle();
 
         // Simulate a right swipe: drag from centre past the 50px threshold.
@@ -128,8 +128,9 @@ void main() {
         await tester.dragFrom(center, const Offset(200, 0));
         await tester.pumpAndSettle();
 
-        expect(swiped, hasLength(1));
-        expect(swiped.first.uid, 'user-1');
+        expect(records, hasLength(1));
+        expect(records.first.user.uid, 'user-1');
+        expect(records.first.direction, 'right');
       },
     );
   });
@@ -142,8 +143,8 @@ void main() {
     testWidgets('left-swipe gesture calls onLeftSwipe with the correct user', (
       tester,
     ) async {
-      final swiped = <User>[];
-      await tester.pumpWidget(_buildScreen(onLeftSwipe: swiped.add));
+      final records = <SwipeRecord>[];
+      await tester.pumpWidget(_buildScreen(onLeftSwipe: records.add));
       await tester.pumpAndSettle();
 
       final cardFinder = find.byType(SwipeCard);
@@ -153,8 +154,11 @@ void main() {
       await tester.dragFrom(center, const Offset(-200, 0));
       await tester.pumpAndSettle();
 
-      expect(swiped, hasLength(1));
-      expect(swiped.first.uid, 'user-1');
+      expect(records, hasLength(1));
+      expect(records.first.user.uid, 'user-1');
+      // WBS 7.3 requirement: left-swipe must carry direction: 'left'
+      // so the parent can write the Firestore doc with the correct field.
+      expect(records.first.direction, 'left');
     });
   });
 
@@ -183,8 +187,8 @@ void main() {
     testWidgets('tap does not trigger onLeftSwipe or onRightSwipe', (
       tester,
     ) async {
-      final rightSwiped = <User>[];
-      final leftSwiped = <User>[];
+      final rightSwiped = <SwipeRecord>[];
+      final leftSwiped = <SwipeRecord>[];
       await tester.pumpWidget(
         _buildScreen(
           onRightSwipe: rightSwiped.add,
@@ -370,7 +374,7 @@ void main() {
     });
 
     testWidgets('Skip button triggers onLeftSwipe', (tester) async {
-      final leftSwiped = <User>[];
+      final leftSwiped = <SwipeRecord>[];
       await tester.pumpWidget(_buildScreen(onLeftSwipe: leftSwiped.add));
       await tester.pumpAndSettle();
 
@@ -378,10 +382,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(leftSwiped, hasLength(1));
+      expect(leftSwiped.first.direction, 'left');
     });
 
     testWidgets('Like button triggers onRightSwipe', (tester) async {
-      final rightSwiped = <User>[];
+      final rightSwiped = <SwipeRecord>[];
       await tester.pumpWidget(_buildScreen(onRightSwipe: rightSwiped.add));
       await tester.pumpAndSettle();
 
@@ -389,6 +394,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(rightSwiped, hasLength(1));
+      expect(rightSwiped.first.direction, 'right');
     });
   });
 
