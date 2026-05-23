@@ -93,3 +93,8 @@ export { issueQRToken } from "./issueQRToken";
 // WBS 10.2 — validateQRToken callable. Real implementation lives in its own
 // module to keep `index.ts` lean.
 export { validateQRToken } from "./validateQRToken";
+
+// WBS 8.5 — Hard-Cancel Pending Swipes When Item Traded. Re-export the
+// Firestore-update trigger so the Functions framework picks it up and
+// `firebase deploy --only functions` includes it.
+export { onItemTraded } from "./onItemTraded";
