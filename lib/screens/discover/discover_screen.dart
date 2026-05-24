@@ -754,7 +754,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   ///   cta:          "Widen search"  →  opens the proximity filter sheet
   Widget _buildEmptyState() {
     return EmptyState(
-      icon: const Icon(Icons.explore_outlined),
+      icon: const Icon(Icons.explore),
       headline: 'No one nearby yet',
       description:
           'Try widening your proximity filter, or check back later — '

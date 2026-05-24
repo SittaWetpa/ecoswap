@@ -343,7 +343,7 @@ Often skipped, often the most-seen part of an app. Generate every empty state ex
 
 | Screen | Headline | Description | CTA |
 |---|---|---|---|
-| Discover (no users in range) | No one nearby yet | Try widening your search radius, or check back later — new swappers join every day. | Widen search |
+| Discover (no users in range) | No one nearby yet | Try widening your proximity filter, or check back later — new swappers join every day. | Widen search |
 | Chats (no matches) | No matches yet | Start swiping on the Discover tab to find people to swap with. | Go to Discover |
 | My Items (no items) | Nothing to swap yet | Add an item from your room — books, clothes, kitchen things — anything you don't use anymore. | Add your first item |
 | Impact (no trades) | Your impact starts soon | After your first swap, you'll see how much CO₂ and waste you've kept out of the landfill. | (no CTA, navigation lives elsewhere) |

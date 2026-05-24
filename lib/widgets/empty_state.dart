@@ -40,7 +40,7 @@ const _kTextTertiary = Color(0xFFA0A09B);
 /// Example — Discover (no users in range):
 /// ```dart
 /// EmptyState(
-///   icon: const Icon(Icons.explore_outlined, size: 40),
+///   icon: const Icon(Icons.explore, size: 40),
 ///   headline: 'No one nearby yet',
 ///   description: 'Try widening your proximity filter, or check back later —'
 ///       ' new swappers join every day.',
