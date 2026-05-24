@@ -448,14 +448,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // The right-swipe button shows heart icon + text; tap the icon button
-      // by finding the heart icon which is always visible in the sticky bar.
-      final likeIcon = find.widgetWithIcon(
-        GestureDetector,
-        Icons.favorite_outline,
-      );
-      expect(likeIcon, findsAtLeast(1));
-      await tester.tap(likeIcon.last);
+      // Tap the Like button via its semantics label — consistent with Skip.
+      await tester.tap(find.bySemanticsLabel('Like'));
       await tester.pumpAndSettle();
 
       expect(rightCalled, isTrue);

@@ -519,6 +519,10 @@ class _StickyActionBar extends StatelessWidget {
             child: Semantics(
               label: 'Like',
               button: true,
+              // excludeSemantics prevents the inner Text('I want to swap with …')
+              // from creating a child semantics node that would shadow this label,
+              // allowing find.bySemanticsLabel('Like') to work in tests.
+              excludeSemantics: true,
               child: GestureDetector(
                 onTap: onRightSwipe,
                 child: Container(
