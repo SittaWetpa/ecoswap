@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 
 import 'package:ecoswap/models/item.dart';
 import 'package:ecoswap/models/user.dart';
+import 'package:ecoswap/services/swipe_service.dart';
 import 'package:ecoswap/widgets/empty_state.dart';
 import 'package:ecoswap/widgets/proximity_filter_sheet.dart';
 
@@ -499,6 +500,16 @@ class DiscoverScreen extends StatefulWidget {
   /// Called when the user taps a card (without swiping).
   final ValueChanged<User>? onCardTap;
 
+  /// Injectable [SwipeService] for writing swipe documents to Firestore.
+  ///
+  /// Left-swipes are recorded immediately inside [DiscoverScreen] before the
+  /// next card animates in (WBS 8.1 acceptance criterion 3).  Right-swipes
+  /// still surface via [onRightSwipe] so the item picker (WBS 8.2) can supply
+  /// the [desiredItemId] before [SwipeService.recordSwipe] is called.
+  ///
+  /// Pass `null` (or omit) in widget tests that do not exercise Firestore.
+  final SwipeService? swipeService;
+
   const DiscoverScreen({
     super.key,
     required this.candidates,
@@ -508,6 +519,7 @@ class DiscoverScreen extends StatefulWidget {
     this.onRightSwipe,
     this.onLeftSwipe,
     this.onCardTap,
+    this.swipeService,
   });
 
   @override
@@ -563,6 +575,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         SwipeRecord(user: swipedUser, direction: 'right'),
       );
     } else if (direction == AxisDirection.left) {
+      // Write the swipe document BEFORE the next card animates in (WBS 8.1).
+      // Fire-and-forget: the Future is intentionally unawaited here because
+      // _handleSwipeEnd is synchronous. The card removal and Firestore write
+      // are independent — a write failure does not block the UI.
+      widget.swipeService?.recordSwipe(swipedUser.uid, 'left');
+
       widget.onLeftSwipe?.call(
         SwipeRecord(user: swipedUser, direction: 'left'),
       );
