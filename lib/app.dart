@@ -3,8 +3,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart' as auth_prov;
 import 'screens/auth/login_screen.dart';
+import 'screens/items/edit_item_screen.dart';
+import 'screens/items/my_items_screen.dart';
+import 'screens/items/upload_item_screen.dart';
 import 'screens/profile/profile_screen.dart';
-import 'screens/profile_setup/step1_name_photo.dart';
+import 'screens/profile_setup/setup_flow.dart';
 
 // Design token
 const _kGreenPrimary = Color(0xFF1D9E75);
@@ -33,7 +36,7 @@ class EcoSwapApp extends StatelessWidget {
   Widget build(BuildContext context) {
     // Named routes shared by both app paths.
     final routes = <String, WidgetBuilder>{
-      '/profile-setup': (_) => const Step1NamePhoto(),
+      '/profile-setup': (_) => const SetupFlowScreen(),
     };
 
     // When a raw stream is injected (legacy test path), skip the real
@@ -56,7 +59,27 @@ class EcoSwapApp extends StatelessWidget {
               );
             }
             if (snapshot.hasData) {
-              return const ProfileScreen();
+              return ProfileScreen(
+                onMyItems: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => MyItemsScreen(
+                      onAdd: () => Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => const UploadItemScreen(),
+                        ),
+                      ),
+                      onEdit: (item) => Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => EditItemScreen(item: item),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
             }
             return const LoginScreen();
           },
@@ -96,7 +119,27 @@ class EcoSwapApp extends StatelessWidget {
             if (snapshot.hasData) {
               // Logged-in: show Profile screen (Discover placeholder replaced
               // by WBS 7.x)
-              return const ProfileScreen();
+              return ProfileScreen(
+                onMyItems: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => MyItemsScreen(
+                      onAdd: () => Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => const UploadItemScreen(),
+                        ),
+                      ),
+                      onEdit: (item) => Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => EditItemScreen(item: item),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
             }
             // Not logged in: show login screen (entry point to auth flow)
             return const LoginScreen();

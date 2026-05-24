@@ -9,6 +9,41 @@ const _kTextPrimary = Color(0xFF1A1A1A);
 const _kTextSecondary = Color(0xFF6B6B66);
 const _kDanger = Color(0xFFC44545);
 
+// ---------------------------------------------------------------------------
+// EcoSwap wordmark — shown at top of auth screens
+// ---------------------------------------------------------------------------
+class _EcoSwapLogo extends StatelessWidget {
+  const _EcoSwapLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: const BoxDecoration(
+            color: _kGreenPrimary,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.eco, color: Colors.white, size: 20),
+        ),
+        const SizedBox(width: 10),
+        const Text(
+          'EcoSwap',
+          style: TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.w700,
+            color: _kGreenPrimary,
+            letterSpacing: -0.5,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class SignupScreen extends StatefulWidget {
   final AuthService? authService;
 
@@ -112,6 +147,9 @@ class _SignupScreenState extends State<SignupScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 8),
+            // EcoSwap logo
+            const _EcoSwapLogo(),
+            const SizedBox(height: 24),
             // Title
             const Text(
               'Create your account',
