@@ -78,12 +78,29 @@ service cloud.firestore {
     //       reciprocal swipes).
     // Write: caller must be the swiperId on the document. Swipes are
     //        append-only — updates and deletes are not permitted.
+    //
+    // WBS 8.1 additional validation:
+    //   - direction must be 'left' or 'right'
+    //   - right-swipes MUST have a non-empty desiredItemId (F16 / F19)
+    //   - left-swipes must have desiredItemId == '' (empty string sentinel)
+    // The client-side item picker (8.2) enforces this before calling
+    // recordSwipe(); these rules are the server-side backstop.
     // -----------------------------------------------------------------------
     match /swipes/{swipeId} {
       allow read: if request.auth != null;
 
       allow create: if request.auth != null
-                    && request.auth.uid == request.resource.data.swiperId;
+                    && request.auth.uid == request.resource.data.swiperId
+                    && (
+                         // Right-swipe: desiredItemId must be a non-empty string
+                         (request.resource.data.direction == 'right'
+                          && request.resource.data.desiredItemId is string
+                          && request.resource.data.desiredItemId != '')
+                         ||
+                         // Left-swipe: desiredItemId must be the empty-string sentinel
+                         (request.resource.data.direction == 'left'
+                          && request.resource.data.desiredItemId == '')
+                       );
 
       allow update, delete: if false;
     }
