@@ -59,16 +59,22 @@ class PhotoUpload extends StatelessWidget {
   /// Upload progress in [0, 1], or null when no upload is in progress.
   final double? uploadProgress;
 
+  /// The uploaded photo URL — displayed when non-empty and [hasPhoto] is true.
+  final String? imageUrl;
+
   const PhotoUpload({
     super.key,
     required this.initial,
     required this.hasPhoto,
     required this.onTap,
     this.uploadProgress,
+    this.imageUrl,
   });
 
   @override
   Widget build(BuildContext context) {
+    final showImage = hasPhoto && imageUrl != null && imageUrl!.isNotEmpty;
+
     return Column(
       children: [
         GestureDetector(
@@ -79,41 +85,70 @@ class PhotoUpload extends StatelessWidget {
             child: Stack(
               children: [
                 // Avatar circle
-                Container(
-                  width: 112,
-                  height: 112,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: hasPhoto ? const Color(0xFFB8D4C0) : _kGreenSoft,
-                  ),
-                  child: Center(
-                    child: uploadProgress != null
-                        ? SizedBox(
-                            width: 40,
-                            height: 40,
-                            child: CircularProgressIndicator(
-                              value: uploadProgress,
-                              color: _kGreenDark,
-                              strokeWidth: 3,
+                ClipOval(
+                  child: SizedBox(
+                    width: 112,
+                    height: 112,
+                    child: showImage
+                        ? Image.network(
+                            imageUrl!,
+                            width: 112,
+                            height: 112,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => Container(
+                              width: 112,
+                              height: 112,
+                              color: const Color(0xFFB8D4C0),
+                              child: Center(
+                                child: Text(
+                                  initial.isEmpty ? 'N' : initial,
+                                  style: const TextStyle(
+                                    fontSize: 44,
+                                    fontWeight: FontWeight.w600,
+                                    color: _kGreenDark,
+                                  ),
+                                ),
+                              ),
                             ),
                           )
-                        : hasPhoto
-                        ? Text(
-                            'your photo',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontFamily: 'monospace',
-                              fontSize: 11,
-                              color: _kGreenDark.withValues(alpha: 0.7),
-                              height: 1.3,
-                            ),
-                          )
-                        : Text(
-                            initial.isEmpty ? 'N' : initial,
-                            style: const TextStyle(
-                              fontSize: 44,
-                              fontWeight: FontWeight.w600,
-                              color: _kGreenDark,
+                        : Container(
+                            width: 112,
+                            height: 112,
+                            color: hasPhoto
+                                ? const Color(0xFFB8D4C0)
+                                : _kGreenSoft,
+                            child: Center(
+                              child: uploadProgress != null
+                                  ? SizedBox(
+                                      width: 40,
+                                      height: 40,
+                                      child: CircularProgressIndicator(
+                                        value: uploadProgress,
+                                        color: _kGreenDark,
+                                        strokeWidth: 3,
+                                      ),
+                                    )
+                                  : hasPhoto
+                                  ? Text(
+                                      'your photo',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontFamily: 'monospace',
+                                        fontSize: 11,
+                                        color: _kGreenDark.withValues(
+                                          alpha: 0.7,
+                                        ),
+                                        height: 1.3,
+                                      ),
+                                    )
+                                  : Text(
+                                      initial.isEmpty ? 'N' : initial,
+                                      style: const TextStyle(
+                                        fontSize: 44,
+                                        fontWeight: FontWeight.w600,
+                                        color: _kGreenDark,
+                                      ),
+                                    ),
                             ),
                           ),
                   ),
@@ -401,6 +436,7 @@ class _Step1NamePhotoState extends State<Step1NamePhoto> {
                       hasPhoto: _hasPhoto,
                       onTap: _handlePickPhoto,
                       uploadProgress: _uploadProgress,
+                      imageUrl: _photoUrl,
                     ),
                   ),
                   const SizedBox(height: 20),
