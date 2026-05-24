@@ -44,7 +44,7 @@ const _kTextTertiary = Color(0xFFA0A09B);
 ///   headline: 'No one nearby yet',
 ///   description: 'Try widening your proximity filter, or check back later —'
 ///       ' new swappers join every day.',
-///   ctaLabel: 'Include nearby provinces',
+///   ctaLabel: 'Widen search',
 ///   onCta: () => ProximityFilterSheet.show(...),
 /// )
 /// ```
