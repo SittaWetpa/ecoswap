@@ -95,8 +95,18 @@ String _formatTimestamp(DateTime? time) {
   }
 
   const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   return '${months[time.month - 1]} ${time.day.toString().padLeft(2, '0')}';
 }
@@ -349,8 +359,9 @@ class _MatchRow extends StatelessWidget {
                         _formatTimestamp(row.lastMessageTime),
                         style: TextStyle(
                           fontSize: 12,
-                          fontWeight:
-                              hasUnread ? FontWeight.w600 : FontWeight.w400,
+                          fontWeight: hasUnread
+                              ? FontWeight.w600
+                              : FontWeight.w400,
                           color: hasUnread ? _kGreenPrimary : _kTextTertiary,
                           height: 1.4,
                         ),
@@ -372,8 +383,9 @@ class _MatchRow extends StatelessWidget {
                           row.lastMessage,
                           style: TextStyle(
                             fontSize: 14,
-                            fontWeight:
-                                hasUnread ? FontWeight.w500 : FontWeight.w400,
+                            fontWeight: hasUnread
+                                ? FontWeight.w500
+                                : FontWeight.w400,
                             color: hasUnread ? _kTextPrimary : _kTextSecondary,
                             height: 1.4,
                           ),
@@ -409,10 +421,10 @@ class _TradePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final myFirst =
-        myItemName.isNotEmpty ? myItemName.split(' ').first : '';
-    final theirFirst =
-        theirItemName.isNotEmpty ? theirItemName.split(' ').first : '';
+    final myFirst = myItemName.isNotEmpty ? myItemName.split(' ').first : '';
+    final theirFirst = theirItemName.isNotEmpty
+        ? theirItemName.split(' ').first
+        : '';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

@@ -9,9 +9,9 @@ enum MatchStatus {
   String get value => name;
 
   static MatchStatus fromString(String s) => MatchStatus.values.firstWhere(
-        (v) => v.value == s,
-        orElse: () => MatchStatus.cancelled,
-      );
+    (v) => v.value == s,
+    orElse: () => MatchStatus.cancelled,
+  );
 }
 
 /// Match document as defined in WBS 3.6 (`/matches/{matchId}`).
@@ -53,7 +53,9 @@ class Match {
       userBId: (json['userBId'] as String?) ?? '',
       userAWantsItemId: (json['userAWantsItemId'] as String?) ?? '',
       userBWantsItemId: (json['userBWantsItemId'] as String?) ?? '',
-      status: MatchStatus.fromString((json['status'] as String?) ?? 'cancelled'),
+      status: MatchStatus.fromString(
+        (json['status'] as String?) ?? 'cancelled',
+      ),
       participants: List<String>.from(json['participants'] as List? ?? []),
       createdAt: json['createdAt'] is Timestamp
           ? (json['createdAt'] as Timestamp).toDate()
@@ -65,18 +67,19 @@ class Match {
   }
 
   Map<String, dynamic> toJson() => {
-        'userAId': userAId,
-        'userBId': userBId,
-        'userAWantsItemId': userAWantsItemId,
-        'userBWantsItemId': userBWantsItemId,
-        'status': status.value,
-        'participants': participants,
-        'createdAt': createdAt != null
-            ? Timestamp.fromDate(createdAt!)
-            : FieldValue.serverTimestamp(),
-        'completedAt':
-            completedAt != null ? Timestamp.fromDate(completedAt!) : null,
-      };
+    'userAId': userAId,
+    'userBId': userBId,
+    'userAWantsItemId': userAWantsItemId,
+    'userBWantsItemId': userBWantsItemId,
+    'status': status.value,
+    'participants': participants,
+    'createdAt': createdAt != null
+        ? Timestamp.fromDate(createdAt!)
+        : FieldValue.serverTimestamp(),
+    'completedAt': completedAt != null
+        ? Timestamp.fromDate(completedAt!)
+        : null,
+  };
 
   Match copyWith({
     String? id,
