@@ -2,7 +2,7 @@
 ///
 /// Covers every acceptance criterion listed in the entry:
 ///   1. Empty feed shows [EmptyState], not a blank screen
-///   2. "Include nearby provinces" button opens the proximity filter sheet
+///   2. "Widen search" button opens the proximity filter sheet
 ///   3. Non-empty feed does NOT show [EmptyState]
 ///
 /// Also tests the reusable [EmptyState] widget in isolation:
@@ -106,13 +106,13 @@ void main() {
             icon: const Icon(Icons.explore_outlined),
             headline: 'No one nearby yet',
             description: 'Try widening your proximity filter.',
-            ctaLabel: 'Include nearby provinces',
+            ctaLabel: 'Widen search',
             onCta: () {},
           ),
         ),
       );
 
-      expect(find.text('Include nearby provinces'), findsOneWidget);
+      expect(find.text('Widen search'), findsOneWidget);
       expect(find.byKey(const Key('empty_state_cta')), findsOneWidget);
     });
 
@@ -140,7 +140,7 @@ void main() {
             icon: const Icon(Icons.explore_outlined),
             headline: 'No one nearby yet',
             description: 'Try widening your proximity filter.',
-            ctaLabel: 'Include nearby provinces',
+            ctaLabel: 'Widen search',
             onCta: () => tapped = true,
           ),
         ),
@@ -176,16 +176,16 @@ void main() {
           find.textContaining('Try widening your proximity filter'),
           findsOneWidget,
         );
-        expect(find.text('Include nearby provinces'), findsOneWidget);
+        expect(find.text('Widen search'), findsOneWidget);
 
         // No swipe card shown.
         expect(find.byType(SwipeCard), findsNothing);
       },
     );
 
-    // AC 2: "Include nearby provinces" button opens the proximity filter sheet.
+    // AC 2: "Widen search" button opens the proximity filter sheet.
     testWidgets(
-      '"Include nearby provinces" button opens the proximity filter sheet',
+      '"Widen search" button opens the proximity filter sheet',
       (tester) async {
         await tester.pumpWidget(
           _buildDiscoverScreen(candidates: [], itemsByUser: {}),
@@ -193,10 +193,10 @@ void main() {
         await tester.pumpAndSettle();
 
         // The button must be visible.
-        expect(find.text('Include nearby provinces'), findsOneWidget);
+        expect(find.text('Widen search'), findsOneWidget);
 
         // Tap the CTA button.
-        await tester.tap(find.text('Include nearby provinces'));
+        await tester.tap(find.text('Widen search'));
         await tester.pumpAndSettle();
 
         // The [ProximityFilterSheet] must have appeared.

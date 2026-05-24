@@ -751,7 +751,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   ///   headline:     "No one nearby yet"
   ///   description:  "Try widening your proximity filter, or check back later —
   ///                  new swappers join every day."
-  ///   cta:          "Include nearby provinces"  →  opens the proximity filter sheet
+  ///   cta:          "Widen search"  →  opens the proximity filter sheet
   Widget _buildEmptyState() {
     return EmptyState(
       icon: const Icon(Icons.explore_outlined),
@@ -759,7 +759,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       description:
           'Try widening your proximity filter, or check back later — '
           'new swappers join every day.',
-      ctaLabel: 'Include nearby provinces',
+      ctaLabel: 'Widen search',
       onCta: _openProximitySheet,
     );
   }
