@@ -184,25 +184,24 @@ void main() {
     );
 
     // AC 2: "Widen search" button opens the proximity filter sheet.
-    testWidgets(
-      '"Widen search" button opens the proximity filter sheet',
-      (tester) async {
-        await tester.pumpWidget(
-          _buildDiscoverScreen(candidates: [], itemsByUser: {}),
-        );
-        await tester.pumpAndSettle();
+    testWidgets('"Widen search" button opens the proximity filter sheet', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _buildDiscoverScreen(candidates: [], itemsByUser: {}),
+      );
+      await tester.pumpAndSettle();
 
-        // The button must be visible.
-        expect(find.text('Widen search'), findsOneWidget);
+      // The button must be visible.
+      expect(find.text('Widen search'), findsOneWidget);
 
-        // Tap the CTA button.
-        await tester.tap(find.text('Widen search'));
-        await tester.pumpAndSettle();
+      // Tap the CTA button.
+      await tester.tap(find.text('Widen search'));
+      await tester.pumpAndSettle();
 
-        // The [ProximityFilterSheet] must have appeared.
-        expect(find.byType(ProximityFilterSheet), findsOneWidget);
-      },
-    );
+      // The [ProximityFilterSheet] must have appeared.
+      expect(find.byType(ProximityFilterSheet), findsOneWidget);
+    });
 
     // AC 3: Non-empty feed does NOT show empty state.
     testWidgets('non-empty candidates list does not show EmptyState', (
