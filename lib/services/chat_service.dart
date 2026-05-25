@@ -20,8 +20,7 @@ import 'package:ecoswap/models/message.dart';
 ///
 /// Production: delegates to Firestore.
 /// Tests: injected with a [StreamController] backed stream.
-typedef MessageStreamFactory =
-    Stream<List<Message>> Function(String matchId);
+typedef MessageStreamFactory = Stream<List<Message>> Function(String matchId);
 
 // ---------------------------------------------------------------------------
 // ChatService
@@ -46,7 +45,7 @@ class ChatService {
   final MessageStreamFactory _streamFactory;
 
   ChatService({MessageStreamFactory? streamFactory})
-      : _streamFactory = streamFactory ?? _defaultStreamFactory;
+    : _streamFactory = streamFactory ?? _defaultStreamFactory;
 
   /// Returns a [Stream<List<Message>>] for the given [matchId].
   ///

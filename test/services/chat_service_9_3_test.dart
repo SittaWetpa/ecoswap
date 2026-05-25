@@ -77,9 +77,7 @@ void main() {
 
     test('messageStream() returns a stream from the injected factory', () {
       final controller = StreamController<List<Message>>();
-      final service = ChatService(
-        streamFactory: (_) => controller.stream,
-      );
+      final service = ChatService(streamFactory: (_) => controller.stream);
 
       final stream = service.messageStream('match-123');
 
@@ -89,77 +87,72 @@ void main() {
       controller.close();
     });
 
-    test(
-      'messageStream() calls factory with the provided matchId',
-      () {
-        String? capturedMatchId;
-        final controller = StreamController<List<Message>>();
-        final service = ChatService(
-          streamFactory: (id) {
-            capturedMatchId = id;
-            return controller.stream;
-          },
-        );
+    test('messageStream() calls factory with the provided matchId', () {
+      String? capturedMatchId;
+      final controller = StreamController<List<Message>>();
+      final service = ChatService(
+        streamFactory: (id) {
+          capturedMatchId = id;
+          return controller.stream;
+        },
+      );
 
-        service.messageStream('match-xyz');
+      service.messageStream('match-xyz');
 
-        expect(capturedMatchId, equals('match-xyz'));
+      expect(capturedMatchId, equals('match-xyz'));
 
-        controller.close();
-      },
-    );
+      controller.close();
+    });
   });
 
   group('ChatScreen real-time listener — WBS 9.3', () {
     // ── Test 1: stream emits new message → message appears in UI ─────────────
 
-    testWidgets(
-      'stream emits a new message and it appears in the UI',
-      (tester) async {
-        final controller = StreamController<List<Message>>();
+    testWidgets('stream emits a new message and it appears in the UI', (
+      tester,
+    ) async {
+      final controller = StreamController<List<Message>>();
 
-        await tester.pumpWidget(
-          _buildWithStream(messageStream: controller.stream),
-        );
+      await tester.pumpWidget(
+        _buildWithStream(messageStream: controller.stream),
+      );
 
-        // No messages yet.
-        expect(find.byType(MessageBubble), findsNothing);
+      // No messages yet.
+      expect(find.byType(MessageBubble), findsNothing);
 
-        // Stream emits one message from the other party.
-        controller.add([_msg(_kOtherUid, 'Hello from Fah!')]);
-        await tester.pump();
+      // Stream emits one message from the other party.
+      controller.add([_msg(_kOtherUid, 'Hello from Fah!')]);
+      await tester.pump();
 
-        expect(find.text('Hello from Fah!'), findsOneWidget);
-        expect(find.byType(MessageBubble), findsOneWidget);
+      expect(find.text('Hello from Fah!'), findsOneWidget);
+      expect(find.byType(MessageBubble), findsOneWidget);
 
-        await controller.close();
-      },
-    );
+      await controller.close();
+    });
 
-    testWidgets(
-      'stream emitting multiple messages shows all of them',
-      (tester) async {
-        final controller = StreamController<List<Message>>();
+    testWidgets('stream emitting multiple messages shows all of them', (
+      tester,
+    ) async {
+      final controller = StreamController<List<Message>>();
 
-        await tester.pumpWidget(
-          _buildWithStream(messageStream: controller.stream),
-        );
+      await tester.pumpWidget(
+        _buildWithStream(messageStream: controller.stream),
+      );
 
-        controller.add([
-          _msg(_kCurrentUid, 'Hi!', id: 'msg-1'),
-          _msg(_kOtherUid, 'Hey!', id: 'msg-2'),
-          _msg(_kCurrentUid, 'How are you?', id: 'msg-3'),
-        ]);
-        await tester.pump();
+      controller.add([
+        _msg(_kCurrentUid, 'Hi!', id: 'msg-1'),
+        _msg(_kOtherUid, 'Hey!', id: 'msg-2'),
+        _msg(_kCurrentUid, 'How are you?', id: 'msg-3'),
+      ]);
+      await tester.pump();
 
-        expect(find.byType(MessageBubble), findsNWidgets(3));
-        expect(find.text('Hi!'), findsOneWidget);
-        expect(find.text('Hey!'), findsOneWidget);
-        expect(find.text('How are you?'), findsOneWidget);
+      expect(find.byType(MessageBubble), findsNWidgets(3));
+      expect(find.text('Hi!'), findsOneWidget);
+      expect(find.text('Hey!'), findsOneWidget);
+      expect(find.text('How are you?'), findsOneWidget);
 
-        await controller.close();
-      },
-    );
+      await controller.close();
+    });
 
     // ── Test 2: navigating away cancels the subscription ─────────────────────
     //
@@ -223,9 +216,7 @@ void main() {
       (tester) async {
         final controller = StreamController<List<Message>>();
 
-        final initial = [
-          _msg(_kCurrentUid, 'Pre-loaded message', id: 'pre-1'),
-        ];
+        final initial = [_msg(_kCurrentUid, 'Pre-loaded message', id: 'pre-1')];
 
         await tester.pumpWidget(
           _buildWithStream(
@@ -285,10 +276,7 @@ void main() {
         expect(find.text('Message 1'), findsOneWidget);
 
         // Scroll to the bottom and verify the last message is reachable.
-        await tester.drag(
-          find.byType(ListView),
-          const Offset(0, -10000),
-        );
+        await tester.drag(find.byType(ListView), const Offset(0, -10000));
         await tester.pump();
 
         expect(find.text('Message 50'), findsOneWidget);
@@ -303,9 +291,7 @@ void main() {
       'ChatScreen subscribes via ChatService when matchId is provided',
       (tester) async {
         final controller = StreamController<List<Message>>();
-        final service = ChatService(
-          streamFactory: (_) => controller.stream,
-        );
+        final service = ChatService(streamFactory: (_) => controller.stream);
 
         await tester.pumpWidget(_buildWithService(chatService: service));
 
