@@ -18,6 +18,7 @@ const _kTextTertiary = Color(0xFFA0A09B);
 // ---------------------------------------------------------------------------
 
 /// WBS 9.2 — Chat Screen UI.
+/// WBS 9.5 — Read Receipt Logic.
 ///
 /// Displays message bubbles, a text input, and a sticky header with the
 /// agreed-trade pill.  The "Ready to swap" CTA is gated:
@@ -41,6 +42,19 @@ class ChatScreen extends StatefulWidget {
   /// The UID of the current user. Used to determine message alignment.
   final String currentUserId;
 
+  /// The UID of the other party in this chat.
+  ///
+  /// Required for WBS 9.5 read-receipt logic: message bubbles check whether
+  /// this UID appears in a message's `readBy` list to show the read indicator.
+  /// Defaults to empty string so existing call sites remain backward compatible.
+  final String otherUserId;
+
+  /// The Firestore match document ID for this conversation.
+  ///
+  /// Required for WBS 9.5: passed to [onMarkRead] so the caller can identify
+  /// which match to update.  Defaults to empty string for backward compat.
+  final String matchId;
+
   /// Pre-loaded list of messages to display.  In production this will come
   /// from a [StreamBuilder] wrapping [ChatService.messageStream] (WBS 9.3).
   final List<Message> messages;
@@ -55,6 +69,13 @@ class ChatScreen extends StatefulWidget {
   /// Called when the user taps the back arrow.
   final VoidCallback? onBack;
 
+  /// WBS 9.5 — called with the IDs of messages that need to be marked read.
+  ///
+  /// Triggered in [initState] and [didUpdateWidget] with every message whose
+  /// [senderId] is not [currentUserId] and whose [readBy] does not yet contain
+  /// [currentUserId].  Keeping Firestore out of the widget makes it testable.
+  final void Function(List<String> messageIds)? onMarkRead;
+
   const ChatScreen({
     super.key,
     required this.otherDisplayName,
@@ -62,10 +83,13 @@ class ChatScreen extends StatefulWidget {
     required this.myItemName,
     required this.theirItemName,
     required this.currentUserId,
+    this.otherUserId = '',
+    this.matchId = '',
     this.messages = const [],
     this.onSend,
     this.onReadyExchange,
     this.onBack,
+    this.onMarkRead,
   });
 
   @override
@@ -80,6 +104,32 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _controller.addListener(_onTextChanged);
+    _triggerMarkRead(widget.messages);
+  }
+
+  @override
+  void didUpdateWidget(ChatScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.messages != widget.messages) {
+      _triggerMarkRead(widget.messages);
+    }
+  }
+
+  /// Collects IDs of incoming messages not yet read by [currentUserId] and
+  /// fires [onMarkRead] if the list is non-empty.
+  void _triggerMarkRead(List<Message> messages) {
+    if (widget.onMarkRead == null) return;
+    final unreadIds = messages
+        .where(
+          (m) =>
+              m.senderId != widget.currentUserId &&
+              !m.readBy.contains(widget.currentUserId),
+        )
+        .map((m) => m.id)
+        .toList();
+    if (unreadIds.isNotEmpty) {
+      widget.onMarkRead!(unreadIds);
+    }
   }
 
   void _onTextChanged() {
@@ -134,6 +184,7 @@ class _ChatScreenState extends State<ChatScreen> {
               child: _MessageList(
                 messages: widget.messages,
                 currentUserId: widget.currentUserId,
+                otherUserId: widget.otherUserId,
               ),
             ),
             _InputBar(
@@ -350,8 +401,13 @@ class _ReadyToSwapButton extends StatelessWidget {
 class _MessageList extends StatelessWidget {
   final List<Message> messages;
   final String currentUserId;
+  final String otherUserId;
 
-  const _MessageList({required this.messages, required this.currentUserId});
+  const _MessageList({
+    required this.messages,
+    required this.currentUserId,
+    required this.otherUserId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -367,7 +423,12 @@ class _MessageList extends StatelessWidget {
         final isOwn = msg.senderId == currentUserId;
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: MessageBubble(text: msg.text, isOwn: isOwn),
+          child: MessageBubble(
+            text: msg.text,
+            isOwn: isOwn,
+            readBy: msg.readBy,
+            otherUserId: otherUserId,
+          ),
         );
       },
     );
@@ -387,13 +448,34 @@ class _MessageList extends StatelessWidget {
 /// - Max width 75% of screen
 /// - Radius 12px, with the corner closest to the sender clipped to 6px
 /// - Padding: 10px × 14px
+///
+/// WBS 9.5: own messages show a small "Read" indicator below the bubble once
+/// [otherUserId] appears in [readBy].
 class MessageBubble extends StatelessWidget {
   final String text;
 
   /// True when the message was sent by the current user.
   final bool isOwn;
 
-  const MessageBubble({super.key, required this.text, required this.isOwn});
+  /// WBS 9.5 — the list of UIDs that have read this message.
+  /// Defaults to empty so existing call sites remain backward compatible.
+  final List<String> readBy;
+
+  /// WBS 9.5 — UID of the other party; used to decide whether to show the
+  /// read indicator.  Defaults to empty string for backward compat.
+  final String otherUserId;
+
+  const MessageBubble({
+    super.key,
+    required this.text,
+    required this.isOwn,
+    this.readBy = const [],
+    this.otherUserId = '',
+  });
+
+  /// Whether the read indicator should be visible on this bubble.
+  bool get _showReadIndicator =>
+      isOwn && otherUserId.isNotEmpty && readBy.contains(otherUserId);
 
   @override
   Widget build(BuildContext context) {
@@ -403,26 +485,47 @@ class MessageBubble extends StatelessWidget {
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: isOwn ? _kGreenPrimary : _kSurfaceAlt,
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(14),
-              topRight: const Radius.circular(14),
-              // The corner nearest the sender is clipped (radius-sm = 6px)
-              bottomRight: Radius.circular(isOwn ? 6 : 14),
-              bottomLeft: Radius.circular(isOwn ? 14 : 6),
+        child: Column(
+          crossAxisAlignment:
+              isOwn ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: isOwn ? _kGreenPrimary : _kSurfaceAlt,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(14),
+                  topRight: const Radius.circular(14),
+                  // The corner nearest the sender is clipped (radius-sm = 6px)
+                  bottomRight: Radius.circular(isOwn ? 6 : 14),
+                  bottomLeft: Radius.circular(isOwn ? 14 : 6),
+                ),
+              ),
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.4,
+                  color: isOwn ? Colors.white : _kTextPrimary,
+                ),
+              ),
             ),
-          ),
-          child: Text(
-            text,
-            style: TextStyle(
-              fontSize: 14,
-              height: 1.4,
-              color: isOwn ? Colors.white : _kTextPrimary,
-            ),
-          ),
+            // WBS 9.5 — read indicator: only on own messages when the other
+            // user has read this message. No presence/typing indicators.
+            if (_showReadIndicator)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  'Read',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: _kGreenPrimary,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
