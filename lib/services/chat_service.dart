@@ -129,7 +129,9 @@ MessageDocAdder _defaultAdder() {
 /// ```
 class ChatService {
   final MessageStreamFactory _streamFactory;
-  final String _currentUserId;
+  // Nullable — resolved lazily in sendMessage() to avoid touching Firebase
+  // at construction time (keeps WBS 9.3 stream-only tests Firebase-free).
+  final String? _explicitUserId;
   final MessageDocAdder _addMessageDoc;
 
   /// Maximum allowed character count for a single message (after trimming).
@@ -140,10 +142,15 @@ class ChatService {
     String? currentUserId,
     MessageDocAdder? messageDocAdder,
   }) : _streamFactory = streamFactory ?? _defaultStreamFactory,
-       _currentUserId =
-           currentUserId ??
-           (firebase_auth.FirebaseAuth.instance.currentUser?.uid ?? ''),
+       _explicitUserId = currentUserId,
        _addMessageDoc = messageDocAdder ?? _defaultAdder();
+
+  /// Returns the effective user ID: injected value if provided, otherwise the
+  /// Firebase Auth current user's UID (resolved at call time).
+  String get _currentUserId =>
+      _explicitUserId ??
+      firebase_auth.FirebaseAuth.instance.currentUser?.uid ??
+      '';
 
   /// Returns a [Stream<List<Message>>] for the given [matchId].
   ///
