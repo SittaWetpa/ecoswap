@@ -1,6 +1,12 @@
-/// Chat Service — WBS 9.4
+/// Chat Service — WBS 9.3 + WBS 9.4
 ///
-/// Implements [sendMessage] which writes a message document to
+/// WBS 9.3: Subscribes to the messages subcollection for a given match using
+/// `snapshots()`, ordered by `sentAt descending`, capped at 50 messages
+/// for the initial load. The stream is consumed by [ChatScreen] via a
+/// [StreamBuilder]. The subscription lifecycle is managed inside
+/// [ChatScreen.dispose()].
+///
+/// WBS 9.4: Implements [sendMessage] which writes a message document to
 /// `/matches/{matchId}/messages/{messageId}`.
 ///
 /// Design decisions (per WBS 9.4 and 3.6):
@@ -11,15 +17,17 @@
 /// - Empty or whitespace-only text is rejected with [EmptyMessageException].
 /// - Text longer than 1000 characters (after trimming) is rejected with
 ///   [MessageTooLongException].
-/// - All Firestore I/O is injectable via [MessageDocAdder] so unit tests run
-///   without a real Firebase project.
+/// - All Firestore I/O is injectable via [MessageStreamFactory] and
+///   [MessageDocAdder] so unit tests run without a real Firebase project.
 library;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 
+import 'package:ecoswap/models/message.dart';
+
 // ---------------------------------------------------------------------------
-// Exceptions
+// Exceptions (WBS 9.4)
 // ---------------------------------------------------------------------------
 
 /// Thrown by [ChatService.sendMessage] when the trimmed message text is empty.
@@ -46,8 +54,14 @@ class MessageTooLongException implements Exception {
 }
 
 // ---------------------------------------------------------------------------
-// Injectable typedef
+// Injectable typedefs
 // ---------------------------------------------------------------------------
+
+/// Returns a live stream of messages for the given matchId.
+///
+/// Production: delegates to Firestore.
+/// Tests: injected with a [StreamController] backed stream.
+typedef MessageStreamFactory = Stream<List<Message>> Function(String matchId);
 
 /// Adds one message document to a match's `messages` sub-collection.
 ///
@@ -56,6 +70,25 @@ class MessageTooLongException implements Exception {
 /// with a fake.
 typedef MessageDocAdder =
     Future<String> Function(String matchId, Map<String, dynamic> data);
+
+// ---------------------------------------------------------------------------
+// Default Firestore implementations
+// ---------------------------------------------------------------------------
+
+Stream<List<Message>> _defaultStreamFactory(String matchId) {
+  return FirebaseFirestore.instance
+      .collection('matches')
+      .doc(matchId)
+      .collection('messages')
+      .orderBy('sentAt', descending: true)
+      .limit(50)
+      .snapshots()
+      .map(
+        (snapshot) => snapshot.docs
+            .map((doc) => Message.fromJson(doc.data(), id: doc.id))
+            .toList(),
+      );
+}
 
 /// Returns the default [MessageDocAdder] that writes to the real Firestore
 /// instance.
@@ -74,34 +107,51 @@ MessageDocAdder _defaultAdder() {
 // ChatService
 // ---------------------------------------------------------------------------
 
-/// Service for WBS 9.4 — Message Send with serverTimestamp.
+/// Provides real-time message streaming (WBS 9.3) and message sending (WBS 9.4).
 ///
 /// Usage (production):
 /// ```dart
-/// final service = ChatService(currentUserId: FirebaseAuth.instance.currentUser!.uid);
-/// await service.sendMessage('matchId-abc', 'Hello!');
+/// final service = ChatService();
+/// // Stream messages:
+/// final stream = service.messageStream('match-abc');
+/// // Send a message:
+/// await service.sendMessage('match-abc', 'Hello!');
 /// ```
 ///
-/// Usage (tests — inject fake adder to avoid touching Firebase):
+/// Usage (tests — inject fakes to avoid touching Firebase):
 /// ```dart
+/// final controller = StreamController<List<Message>>();
 /// final service = ChatService(
+///   streamFactory: (_) => controller.stream,
 ///   currentUserId: 'user-me',
 ///   messageDocAdder: (matchId, data) async { captured = data; return 'fake-id'; },
 /// );
-/// await service.sendMessage('m1', 'Hello!');
 /// ```
 class ChatService {
+  final MessageStreamFactory _streamFactory;
   final String _currentUserId;
   final MessageDocAdder _addMessageDoc;
 
   /// Maximum allowed character count for a single message (after trimming).
   static const int maxMessageLength = 1000;
 
-  ChatService({String? currentUserId, MessageDocAdder? messageDocAdder})
-    : _currentUserId =
-          currentUserId ??
-          (firebase_auth.FirebaseAuth.instance.currentUser?.uid ?? ''),
-      _addMessageDoc = messageDocAdder ?? _defaultAdder();
+  ChatService({
+    MessageStreamFactory? streamFactory,
+    String? currentUserId,
+    MessageDocAdder? messageDocAdder,
+  }) : _streamFactory = streamFactory ?? _defaultStreamFactory,
+       _currentUserId =
+           currentUserId ??
+           (firebase_auth.FirebaseAuth.instance.currentUser?.uid ?? ''),
+       _addMessageDoc = messageDocAdder ?? _defaultAdder();
+
+  /// Returns a [Stream<List<Message>>] for the given [matchId].
+  ///
+  /// Messages are ordered by `sentAt` descending (newest first), limited
+  /// to 50 to cap the initial load as required by WBS 9.3.
+  Stream<List<Message>> messageStream(String matchId) {
+    return _streamFactory(matchId);
+  }
 
   /// Sends a chat message in the match identified by [matchId].
   ///
