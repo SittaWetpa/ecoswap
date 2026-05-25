@@ -325,7 +325,6 @@ void main() {
           theirItemName: 'Electric kettle',
           currentUserId: _kCurrentUid,
           otherUserId: otherUserId,
-          matchId: 'match-test',
           messages: messages,
           onMarkRead: onMarkRead,
         ),

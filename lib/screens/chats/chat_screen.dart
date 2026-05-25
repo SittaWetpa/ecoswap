@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../models/message.dart';
+import '../../services/chat_service.dart';
 
 // ---------------------------------------------------------------------------
 // Design tokens (EcoSwap Style Guide)
@@ -17,14 +20,19 @@ const _kTextTertiary = Color(0xFFA0A09B);
 // ChatScreen
 // ---------------------------------------------------------------------------
 
-/// WBS 9.2 — Chat Screen UI.
-/// WBS 9.5 — Read Receipt Logic.
+/// WBS 9.2 / 9.3 / 9.5 — Chat Screen UI with real-time listener and read
+/// receipts.
 ///
 /// Displays message bubbles, a text input, and a sticky header with the
 /// agreed-trade pill.  The "Ready to swap" CTA is gated:
 /// it only appears once both parties have sent ≥ 3 messages each.
 ///
-/// The screen accepts injectable dependencies so it can be tested without
+/// **WBS 9.3:** The screen subscribes to [messageStream] (or builds one from
+/// [matchId] via [ChatService]) on init and cancels the subscription in
+/// [dispose()] to avoid memory leaks. Messages are capped at 50 by the
+/// service query.
+///
+/// All dependencies are injectable so the screen can be tested without
 /// Firebase.
 class ChatScreen extends StatefulWidget {
   /// The display name of the other party in the chat.
@@ -49,15 +57,29 @@ class ChatScreen extends StatefulWidget {
   /// Defaults to empty string so existing call sites remain backward compatible.
   final String otherUserId;
 
-  /// The Firestore match document ID for this conversation.
+  /// Static message list — used by WBS 9.2 widget tests and as the initial
+  /// display before the live stream emits its first batch.
   ///
-  /// Required for WBS 9.5: passed to [onMarkRead] so the caller can identify
-  /// which match to update.  Defaults to empty string for backward compat.
-  final String matchId;
-
-  /// Pre-loaded list of messages to display.  In production this will come
-  /// from a [StreamBuilder] wrapping [ChatService.messageStream] (WBS 9.3).
+  /// When [messageStream] is also provided, the stream takes over once it
+  /// emits. When neither [messageStream] nor [matchId] is provided the screen
+  /// stays with this static list (test-only mode).
   final List<Message> messages;
+
+  /// Injectable live message stream (WBS 9.3).
+  ///
+  /// If provided, [_ChatScreenState] subscribes on init and cancels in
+  /// dispose().  Takes priority over [matchId].
+  ///
+  /// In widget tests, pass a [StreamController.stream] here to feed messages
+  /// without touching Firebase.
+  final Stream<List<Message>>? messageStream;
+
+  /// Match ID used to build a live stream via [ChatService] when
+  /// [messageStream] is not provided. Optional — omit in tests.
+  final String? matchId;
+
+  /// Injectable [ChatService]. Defaults to the production singleton.
+  final ChatService? chatService;
 
   /// Called when the user taps the send button with non-empty text.
   /// Receives the trimmed message text.
@@ -84,8 +106,10 @@ class ChatScreen extends StatefulWidget {
     required this.theirItemName,
     required this.currentUserId,
     this.otherUserId = '',
-    this.matchId = '',
     this.messages = const [],
+    this.messageStream,
+    this.matchId,
+    this.chatService,
     this.onSend,
     this.onReadyExchange,
     this.onBack,
@@ -100,19 +124,55 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   bool _hasText = false;
 
+  // WBS 9.3 — live message list driven by Firestore stream.
+  List<Message>? _liveMessages;
+  StreamSubscription<List<Message>>? _messageSubscription;
+
   @override
   void initState() {
     super.initState();
     _controller.addListener(_onTextChanged);
+    _subscribeToMessages();
     _triggerMarkRead(widget.messages);
   }
 
   @override
   void didUpdateWidget(ChatScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.messageStream != widget.messageStream ||
+        oldWidget.matchId != widget.matchId) {
+      _messageSubscription?.cancel();
+      _messageSubscription = null;
+      _liveMessages = null;
+      _subscribeToMessages();
+    }
     if (oldWidget.messages != widget.messages) {
       _triggerMarkRead(widget.messages);
     }
+  }
+
+  /// Subscribe to the message stream, if one is available.
+  ///
+  /// Priority order:
+  ///   1. [widget.messageStream] — caller-provided (tests or parent widget).
+  ///   2. Build one from [widget.matchId] via [ChatService].
+  ///   3. Nothing — stay with the static [widget.messages] list.
+  void _subscribeToMessages() {
+    Stream<List<Message>>? stream = widget.messageStream;
+
+    if (stream == null && widget.matchId != null) {
+      final service = widget.chatService ?? ChatService();
+      stream = service.messageStream(widget.matchId!);
+    }
+
+    if (stream == null) return;
+
+    _messageSubscription = stream.listen((msgs) {
+      if (mounted) {
+        setState(() => _liveMessages = msgs);
+        _triggerMarkRead(msgs);
+      }
+    });
   }
 
   /// Collects IDs of incoming messages not yet read by [currentUserId] and
@@ -141,6 +201,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _messageSubscription?.cancel();
+    _messageSubscription = null;
     _controller.removeListener(_onTextChanged);
     _controller.dispose();
     super.dispose();
@@ -153,13 +215,19 @@ class _ChatScreenState extends State<ChatScreen> {
     widget.onSend?.call(text);
   }
 
+  /// The effective message list: live stream data when available, otherwise
+  /// the static list passed via [widget.messages].
+  List<Message> get _effectiveMessages => _liveMessages ?? widget.messages;
+
   /// Count how many messages were sent by [currentUserId].
-  int get _myMessageCount =>
-      widget.messages.where((m) => m.senderId == widget.currentUserId).length;
+  int get _myMessageCount => _effectiveMessages
+      .where((m) => m.senderId == widget.currentUserId)
+      .length;
 
   /// Count how many messages were sent by anyone else.
-  int get _theirMessageCount =>
-      widget.messages.where((m) => m.senderId != widget.currentUserId).length;
+  int get _theirMessageCount => _effectiveMessages
+      .where((m) => m.senderId != widget.currentUserId)
+      .length;
 
   /// The "Ready to swap" CTA is visible only when both sides have ≥ 3 messages.
   bool get _readyVisible => _myMessageCount >= 3 && _theirMessageCount >= 3;
@@ -182,7 +250,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             Expanded(
               child: _MessageList(
-                messages: widget.messages,
+                messages: _effectiveMessages,
                 currentUserId: widget.currentUserId,
                 otherUserId: widget.otherUserId,
               ),
@@ -486,8 +554,9 @@ class MessageBubble extends StatelessWidget {
           maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
         child: Column(
-          crossAxisAlignment:
-              isOwn ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isOwn
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
