@@ -176,15 +176,18 @@ class ItemService {
   /// Returns a stream of all non-deleted items for [uid] (active + traded).
   ///
   /// Used by WBS 6.3 My Items screen — shows active and traded, hides deleted.
+  ///
+  /// Filters deleted items client-side to avoid a composite index requirement
+  /// on (ownerId, status) in Firestore (the `!=` operator forces an index).
   Stream<List<Item>> nonDeletedItemsForUser(String uid) {
     return _db
         .collection('items')
         .where('ownerId', isEqualTo: uid)
-        .where('status', isNotEqualTo: ItemStatus.deleted.value)
         .snapshots()
         .map(
           (snap) => snap.docs
               .map((doc) => Item.fromJson(doc.data(), id: doc.id))
+              .where((item) => item.status != ItemStatus.deleted)
               .toList(),
         );
   }

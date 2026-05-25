@@ -304,27 +304,133 @@ describe("WBS 10.2 — validateQRToken", () => {
   //   "Integration test: full flow A issues → B validates → trade exists,
   //    both items flipped, counters incremented"
   //
-  // The trade write, item flips, and counter increments live inside
-  // `writeTradeAndImpact` (WBS 10.6), which is currently a stub that throws
-  // 'unimplemented'. Re-enable this test by removing `.skip` once WBS 10.6
-  // lands. The five error-path tests above all reject BEFORE reaching the
-  // helper and are therefore unaffected by the stub.
+  // This drives `handleValidateQRToken` end-to-end against the local
+  // emulator. WBS 10.6's writeTradeAndImpact now performs the trade write,
+  // the item flips, and the counter increments — so this test exercises
+  // the full transaction (10.2's match read + 10.6's writes + 10.2's
+  // match-status flip) in a single call.
+  //
+  // Uses the worked example from WBS 11.1:
+  //   alice (=A) gives a denim jacket (clothing, 0.6 kg) → itemX
+  //   bob   (=B) gives an electric kettle (kitchenware, 1.2 kg) → itemY
+  // so the expected attribution is:
+  //   alice: co2 = 1.2 * 6 = 7.2, waste = 0.6
+  //   bob:   co2 = 0.6 * 25 = 15,  waste = 1.2
   // -------------------------------------------------------------------------
-  test.skip("integration: valid scan writes trade, flips items, increments counters", async () => {
-    // When 10.6 lands, this test should:
-    //   1. Seed /users/alice and /users/bob with all 3 counters at 0
-    //   2. Seed two /items/ with known weights and categories so the impact
-    //      math is predictable (e.g. the worked example from WBS 11.1).
-    //   3. Sign a token with alice as displayer.
-    //   4. Call handleValidateQRToken('bob', { token }, () => TEST_SECRET).
-    //   5. Assert { success: true, tradeId: <string> }.
-    //   6. Assert /trades/{tradeId} exists with the right matchId,
-    //      jwtTokenHash, impact object, and itemsExchanged.
-    //   7. Assert both items now have status='traded'.
-    //   8. Assert /matches/m1 has status='completed' and a completedAt
-    //      timestamp.
-    //   9. Assert /users/alice and /users/bob each have tradesCount=1 and
-    //      the expected co2/waste deltas.
-    expect(true).toBe(true);
+  test("integration: valid scan writes trade, flips items, increments counters", async () => {
+    const db = getFirestore();
+
+    // itemX is what B (bob) wants — so it's alice's item.
+    await db.doc("items/itemX").set({
+      ownerId: "alice",
+      name: "Denim Jacket",
+      category: "clothing",
+      condition: "good",
+      weight: 0.6,
+      description: null,
+      wants: null,
+      photoUrl: "",
+      status: "active",
+      createdAt: Timestamp.now(),
+    } as ItemDoc);
+    // itemY is what A (alice) wants — so it's bob's item.
+    await db.doc("items/itemY").set({
+      ownerId: "bob",
+      name: "Electric Kettle",
+      category: "kitchenware",
+      condition: "good",
+      weight: 1.2,
+      description: null,
+      wants: null,
+      photoUrl: "",
+      status: "active",
+      createdAt: Timestamp.now(),
+    } as ItemDoc);
+    await db.doc("matches/m1").set({
+      userAId: "alice",
+      userBId: "bob",
+      userAWantsItemId: "itemY",
+      userBWantsItemId: "itemX",
+      status: "active",
+      participants: ["alice", "bob"],
+      createdAt: Timestamp.now(),
+      completedAt: null,
+    } as MatchDoc);
+
+    // Seed both users with all three counters at zero so the post-commit
+    // deltas are exactly the impact numbers (no add-to-existing math).
+    const baseUser = {
+      email: "",
+      photoUrl: "",
+      homeDistrict: {
+        provinceId: "10",
+        provinceNameTh: "กรุงเทพมหานคร",
+        provinceNameEn: "Bangkok",
+        districtId: "1023",
+        districtNameTh: "บางมด",
+        districtNameEn: "Bang Mod",
+      },
+      bio: "",
+      createdAt: Timestamp.now(),
+      tradesCount: 0,
+      totalCo2Saved: 0,
+      totalWasteDiverted: 0,
+    };
+    await db.doc("users/alice").set({ ...baseUser, displayName: "Alice" });
+    await db.doc("users/bob").set({ ...baseUser, displayName: "Bob" });
+
+    const token = signToken({ displayerUserId: "alice" });
+    const tokenHash = sha256(token);
+
+    const result = await handleValidateQRToken(
+      "bob",
+      { token },
+      () => TEST_SECRET,
+    );
+
+    expect(result.success).toBe(true);
+    expect(typeof result.tradeId).toBe("string");
+    expect(result.tradeId.length).toBeGreaterThan(0);
+
+    // Exactly one trade doc was written.
+    const trades = await db.collection("trades").get();
+    expect(trades.size).toBe(1);
+
+    const trade = (
+      await db.doc(`trades/${result.tradeId}`).get()
+    ).data() as TradeDoc;
+    expect(trade.matchId).toBe("m1");
+    expect(trade.jwtTokenHash).toBe(tokenHash);
+    expect(trade.itemsExchanged).toEqual({ fromA: "itemX", fromB: "itemY" });
+    // 1.2 * 6 evaluates to 7.199999999999999 in IEEE-754; the worked
+    // example states 7.2. Use toBeCloseTo so the test reflects how the
+    // value is read at any practical UI precision.
+    expect(trade.impact.userAGains.userId).toBe("alice");
+    expect(trade.impact.userAGains.co2Saved).toBeCloseTo(7.2, 10);
+    expect(trade.impact.userAGains.wasteDiverted).toBeCloseTo(0.6, 10);
+    expect(trade.impact.userBGains.userId).toBe("bob");
+    expect(trade.impact.userBGains.co2Saved).toBeCloseTo(15, 10);
+    expect(trade.impact.userBGains.wasteDiverted).toBeCloseTo(1.2, 10);
+
+    // Both items flipped to 'traded'.
+    const itemX = (await db.doc("items/itemX").get()).data();
+    const itemY = (await db.doc("items/itemY").get()).data();
+    expect(itemX?.status).toBe("traded");
+    expect(itemY?.status).toBe("traded");
+
+    // Match flipped to 'completed' with a completedAt timestamp.
+    const match = (await db.doc("matches/m1").get()).data();
+    expect(match?.status).toBe("completed");
+    expect(match?.completedAt).toBeInstanceOf(Timestamp);
+
+    // All six counter fields incremented.
+    const alice = (await db.doc("users/alice").get()).data();
+    const bob = (await db.doc("users/bob").get()).data();
+    expect(alice?.tradesCount).toBe(1);
+    expect(alice?.totalCo2Saved).toBeCloseTo(7.2, 10);
+    expect(alice?.totalWasteDiverted).toBeCloseTo(0.6, 10);
+    expect(bob?.tradesCount).toBe(1);
+    expect(bob?.totalCo2Saved).toBeCloseTo(15, 10);
+    expect(bob?.totalWasteDiverted).toBeCloseTo(1.2, 10);
   });
 });
