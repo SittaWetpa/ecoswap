@@ -1,24 +1,19 @@
-/// Chat Service — WBS 9.3 + WBS 9.4
+/// ChatService — WBS 9.3 + WBS 9.4 + WBS 9.5
 ///
-/// WBS 9.3: Subscribes to the messages subcollection for a given match using
-/// `snapshots()`, ordered by `sentAt descending`, capped at 50 messages
-/// for the initial load. The stream is consumed by [ChatScreen] via a
-/// [StreamBuilder]. The subscription lifecycle is managed inside
-/// [ChatScreen.dispose()].
+/// WBS 9.3: [messageStream] subscribes to the messages subcollection for a
+/// given match, ordered by `sentAt` descending, capped at 50 messages.
 ///
-/// WBS 9.4: Implements [sendMessage] which writes a message document to
-/// `/matches/{matchId}/messages/{messageId}`.
+/// WBS 9.4: [sendMessage] writes a message document to
+/// `/matches/{matchId}/messages/{messageId}`. Uses [FieldValue.serverTimestamp]
+/// for sentAt and initialises `readBy` to `[currentUid]`.
+/// Throws [EmptyMessageException] / [MessageTooLongException] on invalid input.
 ///
-/// Design decisions (per WBS 9.4 and 3.6):
-/// - [sentAt] is always [FieldValue.serverTimestamp()] to ensure clock-skew-free
-///   ordering across devices.
-/// - [readBy] is initialised to `[currentUid]` (the sender has already read
-///   their own message).
-/// - Empty or whitespace-only text is rejected with [EmptyMessageException].
-/// - Text longer than 1000 characters (after trimming) is rejected with
-///   [MessageTooLongException].
-/// - All Firestore I/O is injectable via [MessageStreamFactory] and
-///   [MessageDocAdder] so unit tests run without a real Firebase project.
+/// WBS 9.5: [markRead] batch-updates the `readBy` array on message documents,
+/// appending [currentUserId] to each message in [messageIds].
+/// Uses `WriteBatch` + `FieldValue.arrayUnion` for idempotency.
+///
+/// All Firestore I/O is injectable so unit tests run without a real Firebase
+/// project.
 library;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -54,6 +49,36 @@ class MessageTooLongException implements Exception {
 }
 
 // ---------------------------------------------------------------------------
+// WBS 9.5 — ReadUpdate data class
+// ---------------------------------------------------------------------------
+
+/// Carries the parameters for a single `readBy` update within a batch.
+///
+/// Exposed publicly so [BatchCommitter] implementations (including test fakes)
+/// can inspect the fields without dynamic casting.
+class ReadUpdate {
+  final String matchId;
+  final String messageId;
+  final String userId;
+
+  const ReadUpdate({
+    required this.matchId,
+    required this.messageId,
+    required this.userId,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      other is ReadUpdate &&
+      other.matchId == matchId &&
+      other.messageId == messageId &&
+      other.userId == userId;
+
+  @override
+  int get hashCode => Object.hash(matchId, messageId, userId);
+}
+
+// ---------------------------------------------------------------------------
 // Injectable typedefs
 // ---------------------------------------------------------------------------
 
@@ -70,6 +95,15 @@ typedef MessageStreamFactory = Stream<List<Message>> Function(String matchId);
 /// with a fake.
 typedef MessageDocAdder =
     Future<String> Function(String matchId, Map<String, dynamic> data);
+
+/// Commits a batch of readBy updates to Firestore.
+///
+/// Receives a list of [ReadUpdate] records (each carrying the document path
+/// and the user ID to append) and executes a single [WriteBatch] commit.
+///
+/// In production this calls real Firestore; in tests it is replaced with a
+/// fake that captures calls without touching Firebase.
+typedef BatchCommitter = Future<void> Function(List<ReadUpdate> updates);
 
 // ---------------------------------------------------------------------------
 // Default Firestore implementations
@@ -103,36 +137,39 @@ MessageDocAdder _defaultAdder() {
   };
 }
 
+/// Returns the default [BatchCommitter] that writes readBy updates to the real
+/// Firestore instance using a [WriteBatch].
+BatchCommitter _defaultCommitter() {
+  return (List<ReadUpdate> updates) async {
+    if (updates.isEmpty) return;
+    final batch = FirebaseFirestore.instance.batch();
+    for (final u in updates) {
+      final ref = FirebaseFirestore.instance
+          .collection('matches')
+          .doc(u.matchId)
+          .collection('messages')
+          .doc(u.messageId);
+      batch.update(ref, {
+        'readBy': FieldValue.arrayUnion([u.userId]),
+      });
+    }
+    await batch.commit();
+  };
+}
+
 // ---------------------------------------------------------------------------
 // ChatService
 // ---------------------------------------------------------------------------
 
-/// Provides real-time message streaming (WBS 9.3) and message sending (WBS 9.4).
-///
-/// Usage (production):
-/// ```dart
-/// final service = ChatService();
-/// // Stream messages:
-/// final stream = service.messageStream('match-abc');
-/// // Send a message:
-/// await service.sendMessage('match-abc', 'Hello!');
-/// ```
-///
-/// Usage (tests — inject fakes to avoid touching Firebase):
-/// ```dart
-/// final controller = StreamController<List<Message>>();
-/// final service = ChatService(
-///   streamFactory: (_) => controller.stream,
-///   currentUserId: 'user-me',
-///   messageDocAdder: (matchId, data) async { captured = data; return 'fake-id'; },
-/// );
-/// ```
+/// Provides real-time message streaming (WBS 9.3), message sending (WBS 9.4),
+/// and read-receipt writes (WBS 9.5) for a match's messages subcollection.
 class ChatService {
   final MessageStreamFactory _streamFactory;
   // Nullable — resolved lazily in sendMessage() to avoid touching Firebase
   // at construction time (keeps WBS 9.3 stream-only tests Firebase-free).
   final String? _explicitUserId;
   final MessageDocAdder _addMessageDoc;
+  final BatchCommitter _commit;
 
   /// Maximum allowed character count for a single message (after trimming).
   static const int maxMessageLength = 1000;
@@ -141,9 +178,11 @@ class ChatService {
     MessageStreamFactory? streamFactory,
     String? currentUserId,
     MessageDocAdder? messageDocAdder,
+    BatchCommitter? batchCommitter,
   }) : _streamFactory = streamFactory ?? _defaultStreamFactory,
        _explicitUserId = currentUserId,
-       _addMessageDoc = messageDocAdder ?? _defaultAdder();
+       _addMessageDoc = messageDocAdder ?? _defaultAdder(),
+       _commit = batchCommitter ?? _defaultCommitter();
 
   /// Returns the effective user ID: injected value if provided, otherwise the
   /// Firebase Auth current user's UID (resolved at call time).
@@ -151,6 +190,10 @@ class ChatService {
       _explicitUserId ??
       firebase_auth.FirebaseAuth.instance.currentUser?.uid ??
       '';
+
+  // -------------------------------------------------------------------------
+  // WBS 9.3 — Real-time message stream
+  // -------------------------------------------------------------------------
 
   /// Returns a [Stream<List<Message>>] for the given [matchId].
   ///
@@ -160,25 +203,16 @@ class ChatService {
     return _streamFactory(matchId);
   }
 
+  // -------------------------------------------------------------------------
+  // WBS 9.4 — Message send
+  // -------------------------------------------------------------------------
+
   /// Sends a chat message in the match identified by [matchId].
   ///
-  /// The [text] is trimmed before any validation.
-  ///
   /// Throws [EmptyMessageException] if [text] is blank after trimming.
-  /// Throws [MessageTooLongException] if [text] exceeds [maxMessageLength]
-  /// characters after trimming.
+  /// Throws [MessageTooLongException] if [text] exceeds [maxMessageLength].
   ///
   /// On success, returns the Firestore document ID of the written message.
-  ///
-  /// The written document has the shape required by WBS 3.6:
-  /// ```
-  /// {
-  ///   senderId:  <currentUserId>,
-  ///   text:      <trimmed text>,
-  ///   sentAt:    FieldValue.serverTimestamp(),
-  ///   readBy:    [<currentUserId>],
-  /// }
-  /// ```
   Future<String> sendMessage(String matchId, String text) async {
     final trimmed = text.trim();
 
@@ -198,5 +232,36 @@ class ChatService {
     };
 
     return _addMessageDoc(matchId, data);
+  }
+
+  // -------------------------------------------------------------------------
+  // WBS 9.5 — Read receipt writes
+  // -------------------------------------------------------------------------
+
+  /// Marks [messageIds] as read by [currentUserId] within [matchId].
+  ///
+  /// Appends [currentUserId] to each message's `readBy` array using
+  /// `FieldValue.arrayUnion`, which guarantees idempotency.
+  ///
+  /// If [messageIds] is empty, the method returns immediately without
+  /// contacting Firestore.
+  Future<void> markRead({
+    required String matchId,
+    required String currentUserId,
+    required List<String> messageIds,
+  }) async {
+    if (messageIds.isEmpty) return;
+
+    final updates = messageIds
+        .map(
+          (id) => ReadUpdate(
+            matchId: matchId,
+            messageId: id,
+            userId: currentUserId,
+          ),
+        )
+        .toList();
+
+    await _commit(updates);
   }
 }

@@ -1,11 +1,15 @@
-/// Unit tests for WBS 9.4 — Message Send with serverTimestamp
+/// Unit tests for ChatService — WBS 9.4 + WBS 9.5
 ///
-/// Covers all four tests listed in the WBS entry:
+/// WBS 9.4 tests cover:
 ///   1. sendMessage('m1', '   ') rejects with EmptyMessageException
 ///   2. sendMessage('m1', 'x' * 1001) rejects with MessageTooLongException
 ///   3. Successful send writes doc with all required fields and sentAt as server timestamp
-///   4. Optimistic UI shows the message before Firestore round-trip completes
-///      (widget test — see test/screens/chats/chat_service_optimistic_test.dart)
+///
+/// WBS 9.5 tests cover:
+///   1. markRead() calls the batch committer with the correct ReadUpdate records.
+///   2. markRead() is idempotent — calling twice produces two identical batch commits.
+///   3. markRead() with an empty messageIds list never calls the committer.
+///   4. Each ReadUpdate carries the correct matchId, messageId, and userId.
 library;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -13,11 +17,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ecoswap/services/chat_service.dart';
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Helpers — WBS 9.4
 // ---------------------------------------------------------------------------
 
-const _currentUid = 'user-me';
-const _matchId = 'm1';
+const _kSendUid = 'user-me';
+const _kSendMatchId = 'm1';
 
 /// Fake [MessageDocAdder] that captures every call.
 class _FakeAdder {
@@ -31,8 +35,28 @@ class _FakeAdder {
   }
 }
 
-ChatService _makeService(_FakeAdder adder) {
-  return ChatService(currentUserId: _currentUid, messageDocAdder: adder.call);
+ChatService _makeSendService(_FakeAdder adder) {
+  return ChatService(currentUserId: _kSendUid, messageDocAdder: adder.call);
+}
+
+// ---------------------------------------------------------------------------
+// Helpers — WBS 9.5
+// ---------------------------------------------------------------------------
+
+const _kReadMatchId = 'match-123';
+const _kReadUserId = 'user-me';
+
+/// Fake [BatchCommitter] that records every list of [ReadUpdate]s passed to it.
+class _FakeCommitter {
+  final List<List<ReadUpdate>> calls = [];
+
+  Future<void> call(List<ReadUpdate> updates) async {
+    calls.add(List<ReadUpdate>.from(updates));
+  }
+}
+
+ChatService _makeMarkReadService(_FakeCommitter fake) {
+  return ChatService(batchCommitter: fake.call);
 }
 
 // ---------------------------------------------------------------------------
@@ -40,15 +64,19 @@ ChatService _makeService(_FakeAdder adder) {
 // ---------------------------------------------------------------------------
 
 void main() {
+  // =========================================================================
+  // WBS 9.4 — sendMessage()
+  // =========================================================================
+
   group('ChatService.sendMessage() — WBS 9.4', () {
     // ── Test 1: empty / whitespace-only text rejected ─────────────────────────
 
     test("sendMessage('m1', '   ') throws EmptyMessageException", () async {
       final adder = _FakeAdder();
-      final service = _makeService(adder);
+      final service = _makeSendService(adder);
 
       expect(
-        () => service.sendMessage(_matchId, '   '),
+        () => service.sendMessage(_kSendMatchId, '   '),
         throwsA(isA<EmptyMessageException>()),
       );
 
@@ -58,10 +86,10 @@ void main() {
 
     test("sendMessage('m1', '') throws EmptyMessageException", () async {
       final adder = _FakeAdder();
-      final service = _makeService(adder);
+      final service = _makeSendService(adder);
 
       expect(
-        () => service.sendMessage(_matchId, ''),
+        () => service.sendMessage(_kSendMatchId, ''),
         throwsA(isA<EmptyMessageException>()),
       );
 
@@ -74,10 +102,10 @@ void main() {
       "sendMessage('m1', 'x' * 1001) throws MessageTooLongException",
       () async {
         final adder = _FakeAdder();
-        final service = _makeService(adder);
+        final service = _makeSendService(adder);
 
         expect(
-          () => service.sendMessage(_matchId, 'x' * 1001),
+          () => service.sendMessage(_kSendMatchId, 'x' * 1001),
           throwsA(isA<MessageTooLongException>()),
         );
 
@@ -87,9 +115,9 @@ void main() {
 
     test('sendMessage with exactly 1000 chars succeeds (boundary)', () async {
       final adder = _FakeAdder();
-      final service = _makeService(adder);
+      final service = _makeSendService(adder);
 
-      await service.sendMessage(_matchId, 'x' * 1000);
+      await service.sendMessage(_kSendMatchId, 'x' * 1000);
 
       expect(adder.calls.length, 1);
       expect(adder.calls.first.data['text'], 'x' * 1000);
@@ -101,9 +129,9 @@ void main() {
       'successful send writes doc with all required fields and sentAt as server timestamp',
       () async {
         final adder = _FakeAdder();
-        final service = _makeService(adder);
+        final service = _makeSendService(adder);
 
-        final docId = await service.sendMessage(_matchId, 'Hello!');
+        final docId = await service.sendMessage(_kSendMatchId, 'Hello!');
 
         expect(docId, 'fake-id-1');
         expect(adder.calls.length, 1);
@@ -111,12 +139,12 @@ void main() {
         final call = adder.calls.first;
 
         // Correct matchId routed to the adder.
-        expect(call.matchId, _matchId);
+        expect(call.matchId, _kSendMatchId);
 
         final doc = call.data;
 
         // Required fields per WBS 3.6 schema.
-        expect(doc['senderId'], _currentUid);
+        expect(doc['senderId'], _kSendUid);
         expect(doc['text'], 'Hello!');
 
         // sentAt must be a FieldValue (server timestamp), NOT a client DateTime.
@@ -130,7 +158,7 @@ void main() {
         // readBy initialised to [currentUid].
         expect(
           doc['readBy'],
-          equals([_currentUid]),
+          equals([_kSendUid]),
           reason: 'readBy must contain exactly the sender uid at send time',
         );
 
@@ -145,20 +173,130 @@ void main() {
 
     test('text is trimmed before writing', () async {
       final adder = _FakeAdder();
-      final service = _makeService(adder);
+      final service = _makeSendService(adder);
 
-      await service.sendMessage(_matchId, '  hi there  ');
+      await service.sendMessage(_kSendMatchId, '  hi there  ');
 
       expect(adder.calls.first.data['text'], 'hi there');
     });
 
     test('sendMessage routes to the correct matchId', () async {
       final adder = _FakeAdder();
-      final service = _makeService(adder);
+      final service = _makeSendService(adder);
 
       await service.sendMessage('match-abc', 'Test');
 
       expect(adder.calls.first.matchId, 'match-abc');
+    });
+  });
+
+  // =========================================================================
+  // WBS 9.5 — markRead()
+  // =========================================================================
+
+  group('ChatService.markRead() — WBS 9.5', () {
+    // ── Test 1 — correct ReadUpdate records are produced ─────────────────────
+
+    test('produces one ReadUpdate per messageId with correct fields', () async {
+      final fake = _FakeCommitter();
+      final service = _makeMarkReadService(fake);
+
+      await service.markRead(
+        matchId: _kReadMatchId,
+        currentUserId: _kReadUserId,
+        messageIds: ['msg-1', 'msg-2', 'msg-3'],
+      );
+
+      expect(
+        fake.calls.length,
+        equals(1),
+        reason: 'committer should be called exactly once',
+      );
+
+      final batch = fake.calls.first;
+      expect(batch.length, equals(3), reason: 'one ReadUpdate per messageId');
+
+      expect(batch[0].matchId, equals(_kReadMatchId));
+      expect(batch[0].messageId, equals('msg-1'));
+      expect(batch[0].userId, equals(_kReadUserId));
+
+      expect(batch[1].matchId, equals(_kReadMatchId));
+      expect(batch[1].messageId, equals('msg-2'));
+      expect(batch[1].userId, equals(_kReadUserId));
+
+      expect(batch[2].matchId, equals(_kReadMatchId));
+      expect(batch[2].messageId, equals('msg-3'));
+      expect(batch[2].userId, equals(_kReadUserId));
+    });
+
+    // ── Test 2 — idempotency ──────────────────────────────────────────────────
+
+    test('is idempotent — calling twice on same ids does not throw and '
+        'produces the same batch contents both times', () async {
+      final fake = _FakeCommitter();
+      final service = _makeMarkReadService(fake);
+
+      await service.markRead(
+        matchId: _kReadMatchId,
+        currentUserId: _kReadUserId,
+        messageIds: ['msg-a', 'msg-b'],
+      );
+
+      await service.markRead(
+        matchId: _kReadMatchId,
+        currentUserId: _kReadUserId,
+        messageIds: ['msg-a', 'msg-b'],
+      );
+
+      expect(
+        fake.calls.length,
+        equals(2),
+        reason: 'committer called once per markRead invocation',
+      );
+
+      expect(
+        fake.calls[0],
+        equals(fake.calls[1]),
+        reason: 'both commits carry the same ReadUpdate records',
+      );
+    });
+
+    // ── Test 3 — empty messageIds: committer is never called ──────────────────
+
+    test('does not call committer when messageIds is empty', () async {
+      final fake = _FakeCommitter();
+      final service = _makeMarkReadService(fake);
+
+      await service.markRead(
+        matchId: _kReadMatchId,
+        currentUserId: _kReadUserId,
+        messageIds: [],
+      );
+
+      expect(
+        fake.calls,
+        isEmpty,
+        reason: 'no Firestore write should occur for an empty list',
+      );
+    });
+
+    // ── Test 4 — single message ───────────────────────────────────────────────
+
+    test('works correctly with a single messageId', () async {
+      final fake = _FakeCommitter();
+      final service = _makeMarkReadService(fake);
+
+      await service.markRead(
+        matchId: 'match-xyz',
+        currentUserId: 'uid-abc',
+        messageIds: ['only-msg'],
+      );
+
+      expect(fake.calls.length, equals(1));
+      expect(fake.calls.first.length, equals(1));
+      expect(fake.calls.first.first.matchId, equals('match-xyz'));
+      expect(fake.calls.first.first.messageId, equals('only-msg'));
+      expect(fake.calls.first.first.userId, equals('uid-abc'));
     });
   });
 }

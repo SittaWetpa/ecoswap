@@ -316,4 +316,229 @@ void main() {
       );
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // WBS 9.5 — Read Receipt Logic
+  // ---------------------------------------------------------------------------
+
+  group('ChatScreen — WBS 9.5', () {
+    // Helpers for WBS 9.5 tests.
+
+    /// Builds a [ChatScreen] with the WBS 9.5 params populated.
+    Widget build95Screen({
+      List<Message> messages = const [],
+      void Function(List<String>)? onMarkRead,
+      String otherUserId = _kOtherUid,
+    }) {
+      return MaterialApp(
+        home: ChatScreen(
+          otherDisplayName: 'Fah',
+          myItemName: 'Leather tote bag',
+          theirItemName: 'Electric kettle',
+          currentUserId: _kCurrentUid,
+          otherUserId: otherUserId,
+          messages: messages,
+          onMarkRead: onMarkRead,
+        ),
+      );
+    }
+
+    /// Creates a [Message] from the other user that is NOT yet read by the
+    /// current user.
+    Message unreadIncoming(String id) => Message(
+      id: id,
+      senderId: _kOtherUid,
+      text: 'Incoming $id',
+      readBy: const [],
+    );
+
+    // ── Test A: onMarkRead called with all unread incoming message IDs ─────
+
+    testWidgets(
+      'opening a chat with 3 unread messages calls onMarkRead with all 3 IDs',
+      (tester) async {
+        List<String>? capturedIds;
+
+        final messages = [
+          unreadIncoming('msg-1'),
+          unreadIncoming('msg-2'),
+          unreadIncoming('msg-3'),
+        ];
+
+        await tester.pumpWidget(
+          build95Screen(
+            messages: messages,
+            onMarkRead: (ids) => capturedIds = ids,
+          ),
+        );
+
+        expect(
+          capturedIds,
+          isNotNull,
+          reason: 'onMarkRead must be called on initState',
+        );
+        expect(
+          capturedIds,
+          containsAll(['msg-1', 'msg-2', 'msg-3']),
+          reason: 'all 3 unread message IDs must be passed to onMarkRead',
+        );
+        expect(
+          capturedIds!.length,
+          equals(3),
+          reason: 'exactly 3 IDs — no duplicates, no extras',
+        );
+      },
+    );
+
+    // ── Test A2: already-read messages are NOT passed to onMarkRead ─────────
+
+    testWidgets(
+      'messages already read by currentUser are excluded from onMarkRead',
+      (tester) async {
+        List<String>? capturedIds;
+
+        final messages = [
+          // Already read by current user — should be excluded.
+          Message(
+            id: 'msg-already-read',
+            senderId: _kOtherUid,
+            text: 'Already read',
+            readBy: [_kCurrentUid],
+          ),
+          // Not yet read — should be included.
+          unreadIncoming('msg-unread'),
+        ];
+
+        await tester.pumpWidget(
+          build95Screen(
+            messages: messages,
+            onMarkRead: (ids) => capturedIds = ids,
+          ),
+        );
+
+        expect(capturedIds, equals(['msg-unread']));
+      },
+    );
+
+    // ── Test A3: own messages are never passed to onMarkRead ────────────────
+
+    testWidgets('own messages are never included in onMarkRead call', (
+      tester,
+    ) async {
+      List<String>? capturedIds;
+
+      final messages = [
+        // Own message — must be excluded even if readBy is empty.
+        Message(
+          id: 'my-msg',
+          senderId: _kCurrentUid,
+          text: 'My message',
+          readBy: const [],
+        ),
+      ];
+
+      await tester.pumpWidget(
+        build95Screen(
+          messages: messages,
+          onMarkRead: (ids) => capturedIds = ids,
+        ),
+      );
+
+      // onMarkRead must not be called because there are no incoming unread
+      // messages (the only message is our own).
+      expect(
+        capturedIds,
+        isNull,
+        reason:
+            'onMarkRead must not fire when there are no unread incoming msgs',
+      );
+    });
+
+    // ── Test B: read indicator shows when otherUserId is in readBy ──────────
+
+    testWidgets(
+      'read indicator shows on own message when otherUserId is in readBy',
+      (tester) async {
+        final messages = [
+          Message(
+            id: 'my-read-msg',
+            senderId: _kCurrentUid,
+            text: 'Has been read',
+            readBy: [_kOtherUid], // other user has read it
+          ),
+        ];
+
+        await tester.pumpWidget(build95Screen(messages: messages));
+
+        expect(
+          find.text('Read'),
+          findsOneWidget,
+          reason: '"Read" indicator must appear when otherUserId is in readBy',
+        );
+      },
+    );
+
+    // ── Test C: read indicator does NOT show when otherUserId not in readBy ─
+
+    testWidgets(
+      'read indicator does NOT show on own message when otherUserId not in readBy',
+      (tester) async {
+        final messages = [
+          Message(
+            id: 'my-unread-msg',
+            senderId: _kCurrentUid,
+            text: 'Not read yet',
+            readBy: const [], // other user has NOT read it
+          ),
+        ];
+
+        await tester.pumpWidget(build95Screen(messages: messages));
+
+        expect(
+          find.text('Read'),
+          findsNothing,
+          reason:
+              '"Read" indicator must NOT appear when otherUserId is absent '
+              'from readBy',
+        );
+      },
+    );
+
+    // ── Test C2: read indicator does NOT show on incoming messages ──────────
+
+    testWidgets('read indicator does NOT show on incoming (non-own) messages', (
+      tester,
+    ) async {
+      final messages = [
+        Message(
+          id: 'their-msg',
+          senderId: _kOtherUid,
+          text: 'Their message',
+          // Even if currentUser is in readBy, no indicator on incoming msgs.
+          readBy: [_kCurrentUid, _kOtherUid],
+        ),
+      ];
+
+      await tester.pumpWidget(build95Screen(messages: messages));
+
+      expect(
+        find.text('Read'),
+        findsNothing,
+        reason: '"Read" indicator must only appear on own messages',
+      );
+    });
+
+    // ── Test D: no "presence" or "typing" indicators ────────────────────────
+
+    testWidgets('no typing or presence indicators are shown (out of scope)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(build95Screen());
+
+      expect(find.textContaining('typing'), findsNothing);
+      expect(find.textContaining('Typing'), findsNothing);
+      expect(find.textContaining('Online'), findsNothing);
+      expect(find.textContaining('Active'), findsNothing);
+    });
+  });
 }
