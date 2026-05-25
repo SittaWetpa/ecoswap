@@ -65,30 +65,34 @@ class _PhotoField extends StatelessWidget {
   final bool hasPhoto;
   final double? uploadProgress;
   final VoidCallback onTap;
+  final VoidCallback? onRemove;
+
+  /// The uploaded photo URL — shown as actual image when non-empty.
+  final String? imageUrl;
 
   const _PhotoField({
     required this.hasPhoto,
     required this.onTap,
     this.uploadProgress,
+    this.onRemove,
+    this.imageUrl,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      key: const Key('photoField'),
-      onTap: onTap,
-      child: AspectRatio(
-        aspectRatio: 1,
-        child: Container(
-          decoration: BoxDecoration(
-            color: _kSurfaceAlt,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: _kBorder,
-              style: hasPhoto ? BorderStyle.solid : BorderStyle.solid,
-              width: 1,
-            ),
-          ),
+    final showImage = hasPhoto && imageUrl != null && imageUrl!.isNotEmpty;
+
+    return AspectRatio(
+      aspectRatio: 1,
+      child: Container(
+        key: const Key('photoField'),
+        decoration: BoxDecoration(
+          color: _kSurfaceAlt,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _kBorder, width: 1),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
           child: uploadProgress != null
               ? Center(
                   child: SizedBox(
@@ -103,40 +107,59 @@ class _PhotoField extends StatelessWidget {
                 )
               : hasPhoto
               ? Stack(
+                  fit: StackFit.expand,
                   children: [
-                    // Striped placeholder representing uploaded photo
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            _kGreenSoft,
-                            _kGreenSoft.withValues(alpha: 0.6),
-                          ],
-                        ),
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'photo uploaded',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: _kGreenDark,
-                            fontWeight: FontWeight.w500,
+                    // Actual photo
+                    GestureDetector(
+                      onTap: onTap,
+                      child: showImage
+                          ? Image.network(
+                              imageUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => Container(
+                                color: _kGreenSoft,
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.image_outlined,
+                                    size: 40,
+                                    color: _kGreenDark,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : Container(color: _kGreenSoft),
+                    ),
+                    // Remove button — top-right
+                    if (onRemove != null)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: GestureDetector(
+                          onTap: onRemove,
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.55),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.close,
+                              size: 18,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    // "Change photo" button overlay
+                    // Change photo button — bottom-right
                     Positioned(
-                      right: 12,
-                      bottom: 12,
+                      right: 10,
+                      bottom: 10,
                       child: GestureDetector(
                         onTap: onTap,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
+                            horizontal: 10,
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
@@ -160,9 +183,9 @@ class _PhotoField extends StatelessWidget {
                               ),
                               SizedBox(width: 6),
                               Text(
-                                'Change photo',
+                                'Change',
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                   color: _kGreenPrimary,
                                 ),
@@ -174,29 +197,32 @@ class _PhotoField extends StatelessWidget {
                     ),
                   ],
                 )
-              : Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(
-                      Icons.camera_alt_outlined,
-                      size: 32,
-                      color: _kTextTertiary,
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Add a photo',
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: _kTextSecondary,
-                        fontWeight: FontWeight.w500,
+              : GestureDetector(
+                  onTap: onTap,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(
+                        Icons.camera_alt_outlined,
+                        size: 32,
+                        color: _kTextTertiary,
                       ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Tap to use camera or library',
-                      style: TextStyle(fontSize: 12, color: _kTextTertiary),
-                    ),
-                  ],
+                      SizedBox(height: 8),
+                      Text(
+                        'Add a photo',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: _kTextSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Tap to use camera or library',
+                        style: TextStyle(fontSize: 12, color: _kTextTertiary),
+                      ),
+                    ],
+                  ),
                 ),
         ),
       ),
@@ -926,6 +952,11 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
                       hasPhoto: _hasPhoto,
                       uploadProgress: _uploadProgress,
                       onTap: _handlePickPhoto,
+                      imageUrl: _photoUrl,
+                      onRemove: () => setState(() {
+                        _hasPhoto = false;
+                        _photoUrl = '';
+                      }),
                     ),
                     if (_photoError != null) ...[
                       const SizedBox(height: 6),
