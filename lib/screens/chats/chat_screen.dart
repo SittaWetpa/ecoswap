@@ -17,6 +17,36 @@ const _kTextSecondary = Color(0xFF6B6B66);
 const _kTextTertiary = Color(0xFFA0A09B);
 
 // ---------------------------------------------------------------------------
+// OptimisticMessage — WBS 9.4
+// ---------------------------------------------------------------------------
+
+/// Represents a locally-queued optimistic message that has not yet received
+/// a Firestore acknowledgement.
+///
+/// [isSending] is `true` while the write is in-flight; it becomes `false`
+/// once the [Future] returned by [onSend] completes successfully.
+/// On error the message is removed from the list entirely.
+class OptimisticMessage {
+  final String id;
+  final String text;
+  final bool isSending;
+
+  const OptimisticMessage({
+    required this.id,
+    required this.text,
+    this.isSending = true,
+  });
+
+  OptimisticMessage copyWith({bool? isSending}) {
+    return OptimisticMessage(
+      id: id,
+      text: text,
+      isSending: isSending ?? this.isSending,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // ChatScreen
 // ---------------------------------------------------------------------------
 
@@ -75,7 +105,12 @@ class ChatScreen extends StatefulWidget {
 
   /// Called when the user taps the send button with non-empty text.
   /// Receives the trimmed message text.
-  final void Function(String text)? onSend;
+  ///
+  /// If this returns a [Future], the chat screen shows an optimistic
+  /// "sending" indicator on the message until the Future resolves.
+  /// Pass a synchronous `void Function(String)` or an async one —
+  /// both are accepted.
+  final Future<void> Function(String text)? onSend;
 
   /// Called when the user taps the "Ready to swap" / Exchange button.
   final VoidCallback? onReadyExchange;
@@ -110,6 +145,10 @@ class _ChatScreenState extends State<ChatScreen> {
   // WBS 9.3 — live message list driven by Firestore stream.
   List<Message>? _liveMessages;
   StreamSubscription<List<Message>>? _messageSubscription;
+
+  /// Locally-queued optimistic messages (WBS 9.4 optimistic UI).
+  final List<OptimisticMessage> _optimisticMessages = [];
+  int _optimisticIdCounter = 0;
 
   @override
   void initState() {
@@ -157,11 +196,51 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  void _handleSend() {
+  /// Handles the send action with optimistic UI (WBS 9.4).
+  ///
+  /// 1. Immediately appends an [OptimisticMessage] with `isSending = true`.
+  /// 2. Clears the input field.
+  /// 3. Awaits [onSend] — on completion marks the message as `isSending = false`
+  ///    (the "sent" state).
+  /// 4. On any error the optimistic message is silently removed (in a real app
+  ///    an error toast would follow, but that is out of scope for WBS 9.4).
+  Future<void> _handleSend() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+
     _controller.clear();
-    widget.onSend?.call(text);
+
+    final optimisticId = 'opt-${_optimisticIdCounter++}';
+
+    setState(() {
+      _optimisticMessages.add(
+        OptimisticMessage(id: optimisticId, text: text, isSending: true),
+      );
+    });
+
+    try {
+      await widget.onSend?.call(text);
+
+      if (mounted) {
+        setState(() {
+          final index = _optimisticMessages.indexWhere(
+            (m) => m.id == optimisticId,
+          );
+          if (index != -1) {
+            _optimisticMessages[index] = _optimisticMessages[index].copyWith(
+              isSending: false,
+            );
+          }
+        });
+      }
+    } catch (_) {
+      // On error, remove the optimistic message.
+      if (mounted) {
+        setState(() {
+          _optimisticMessages.removeWhere((m) => m.id == optimisticId);
+        });
+      }
+    }
   }
 
   /// The effective message list: live stream data when available, otherwise
@@ -201,6 +280,7 @@ class _ChatScreenState extends State<ChatScreen> {
               child: _MessageList(
                 messages: _effectiveMessages,
                 currentUserId: widget.currentUserId,
+                optimisticMessages: _optimisticMessages,
               ),
             ),
             _InputBar(
@@ -418,24 +498,48 @@ class _MessageList extends StatelessWidget {
   final List<Message> messages;
   final String currentUserId;
 
-  const _MessageList({required this.messages, required this.currentUserId});
+  /// Optimistic messages appended locally while Firestore writes are in-flight.
+  /// Each entry carries an [isSending] flag that drives the status indicator.
+  final List<OptimisticMessage> optimisticMessages;
+
+  const _MessageList({
+    required this.messages,
+    required this.currentUserId,
+    this.optimisticMessages = const [],
+  });
 
   @override
   Widget build(BuildContext context) {
-    if (messages.isEmpty) {
+    final totalCount = messages.length + optimisticMessages.length;
+
+    if (totalCount == 0) {
       return const SizedBox.expand();
     }
 
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      itemCount: messages.length,
+      itemCount: totalCount,
       itemBuilder: (context, index) {
-        final msg = messages[index];
-        final isOwn = msg.senderId == currentUserId;
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: MessageBubble(text: msg.text, isOwn: isOwn),
-        );
+        if (index < messages.length) {
+          final msg = messages[index];
+          final isOwn = msg.senderId == currentUserId;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: MessageBubble(text: msg.text, isOwn: isOwn),
+          );
+        } else {
+          // Optimistic message — always "own" (current user sent it).
+          final opt = optimisticMessages[index - messages.length];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: MessageBubble(
+              key: ValueKey(opt.id),
+              text: opt.text,
+              isOwn: true,
+              isSending: opt.isSending,
+            ),
+          );
+        }
       },
     );
   }
@@ -460,7 +564,16 @@ class MessageBubble extends StatelessWidget {
   /// True when the message was sent by the current user.
   final bool isOwn;
 
-  const MessageBubble({super.key, required this.text, required this.isOwn});
+  /// True while the Firestore write is in-flight (optimistic UI, WBS 9.4).
+  /// Shows a clock icon; resolves to a checkmark once the write completes.
+  final bool isSending;
+
+  const MessageBubble({
+    super.key,
+    required this.text,
+    required this.isOwn,
+    this.isSending = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -482,13 +595,33 @@ class MessageBubble extends StatelessWidget {
               bottomLeft: Radius.circular(isOwn ? 14 : 6),
             ),
           ),
-          child: Text(
-            text,
-            style: TextStyle(
-              fontSize: 14,
-              height: 1.4,
-              color: isOwn ? Colors.white : _kTextPrimary,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                text,
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.4,
+                  color: isOwn ? Colors.white : _kTextPrimary,
+                ),
+              ),
+              // Optimistic status indicator (WBS 9.4): clock while sending,
+              // checkmark once acknowledged. Only shown on own messages.
+              if (isOwn)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Icon(
+                    key: isSending
+                        ? const ValueKey('sending')
+                        : const ValueKey('sent'),
+                    isSending ? Icons.access_time : Icons.check,
+                    size: 10,
+                    color: Colors.white.withValues(alpha: 0.7),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -503,7 +636,7 @@ class MessageBubble extends StatelessWidget {
 class _InputBar extends StatelessWidget {
   final TextEditingController controller;
   final bool hasText;
-  final VoidCallback onSend;
+  final Future<void> Function() onSend;
 
   const _InputBar({
     required this.controller,
@@ -568,7 +701,7 @@ class _InputBar extends StatelessWidget {
 
 class _SendButton extends StatelessWidget {
   final bool hasText;
-  final VoidCallback onSend;
+  final Future<void> Function() onSend;
 
   const _SendButton({required this.hasText, required this.onSend});
 
