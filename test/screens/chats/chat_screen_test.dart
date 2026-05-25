@@ -23,7 +23,7 @@ const _kOtherUid = 'user-them';
 /// Builds a [ChatScreen] wrapped in [MaterialApp].
 Widget _buildScreen({
   List<Message> messages = const [],
-  void Function(String)? onSend,
+  Future<void> Function(String)? onSend,
   VoidCallback? onReadyExchange,
   VoidCallback? onBack,
 }) {
@@ -113,7 +113,7 @@ void main() {
     testWidgets('send button is disabled when input is empty', (tester) async {
       bool sendCalled = false;
 
-      await tester.pumpWidget(_buildScreen(onSend: (_) => sendCalled = true));
+      await tester.pumpWidget(_buildScreen(onSend: (_) async { sendCalled = true; }));
 
       // Tap the send button while the field is empty.
       // The button uses InkWell with onTap = null when hasText is false,
@@ -140,7 +140,7 @@ void main() {
     ) async {
       String? sentText;
 
-      await tester.pumpWidget(_buildScreen(onSend: (t) => sentText = t));
+      await tester.pumpWidget(_buildScreen(onSend: (t) async { sentText = t; }));
 
       // Type something into the input.
       await tester.enterText(find.byType(TextField), 'Hi!');
