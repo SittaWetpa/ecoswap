@@ -77,7 +77,8 @@ void main() {
         expect(
           find.byIcon(Icons.access_time),
           findsOneWidget,
-          reason: 'Clock icon must be shown while the Firestore write is in-flight',
+          reason:
+              'Clock icon must be shown while the Firestore write is in-flight',
         );
 
         // Now resolve the Future (simulating Firestore ack).
@@ -101,55 +102,57 @@ void main() {
       },
     );
 
-    testWidgets(
-      'input field is cleared immediately after tapping Send',
-      (tester) async {
-        final completer = Completer<void>();
+    testWidgets('input field is cleared immediately after tapping Send', (
+      tester,
+    ) async {
+      final completer = Completer<void>();
 
-        await tester.pumpWidget(
-          _buildScreen(sendHandler: (_) => completer.future),
-        );
+      await tester.pumpWidget(
+        _buildScreen(sendHandler: (_) => completer.future),
+      );
 
-        await tester.enterText(find.byType(TextField), 'Clear me');
-        await tester.pump();
-        await tester.tap(find.byIcon(Icons.send));
-        await tester.pump();
+      await tester.enterText(find.byType(TextField), 'Clear me');
+      await tester.pump();
+      await tester.tap(find.byIcon(Icons.send));
+      await tester.pump();
 
-        // Input field should be empty immediately.
-        final tf = tester.widget<TextField>(find.byType(TextField));
-        expect(tf.controller?.text ?? '', isEmpty,
-            reason: 'Input must be cleared as soon as Send is tapped');
+      // Input field should be empty immediately.
+      final tf = tester.widget<TextField>(find.byType(TextField));
+      expect(
+        tf.controller?.text ?? '',
+        isEmpty,
+        reason: 'Input must be cleared as soon as Send is tapped',
+      );
 
-        completer.complete();
-        await tester.pump();
-      },
-    );
+      completer.complete();
+      await tester.pump();
+    });
 
-    testWidgets(
-      'optimistic message is removed on send error',
-      (tester) async {
-        final completer = Completer<void>();
+    testWidgets('optimistic message is removed on send error', (tester) async {
+      final completer = Completer<void>();
 
-        await tester.pumpWidget(
-          _buildScreen(sendHandler: (_) => completer.future),
-        );
+      await tester.pumpWidget(
+        _buildScreen(sendHandler: (_) => completer.future),
+      );
 
-        await tester.enterText(find.byType(TextField), 'Will fail');
-        await tester.pump();
-        await tester.tap(find.byIcon(Icons.send));
-        await tester.pump();
+      await tester.enterText(find.byType(TextField), 'Will fail');
+      await tester.pump();
+      await tester.tap(find.byIcon(Icons.send));
+      await tester.pump();
 
-        // Optimistic message visible while in-flight.
-        expect(find.text('Will fail'), findsOneWidget);
+      // Optimistic message visible while in-flight.
+      expect(find.text('Will fail'), findsOneWidget);
 
-        // Simulate Firestore error.
-        completer.completeError(Exception('network error'));
-        await tester.pump();
+      // Simulate Firestore error.
+      completer.completeError(Exception('network error'));
+      await tester.pump();
 
-        // Optimistic message should be removed.
-        expect(find.text('Will fail'), findsNothing,
-            reason: 'Optimistic message must be removed on send error');
-      },
-    );
+      // Optimistic message should be removed.
+      expect(
+        find.text('Will fail'),
+        findsNothing,
+        reason: 'Optimistic message must be removed on send error',
+      );
+    });
   });
 }

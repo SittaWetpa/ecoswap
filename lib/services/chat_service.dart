@@ -97,13 +97,11 @@ class ChatService {
   /// Maximum allowed character count for a single message (after trimming).
   static const int maxMessageLength = 1000;
 
-  ChatService({
-    String? currentUserId,
-    MessageDocAdder? messageDocAdder,
-  }) : _currentUserId =
-           currentUserId ??
-           (firebase_auth.FirebaseAuth.instance.currentUser?.uid ?? ''),
-       _addMessageDoc = messageDocAdder ?? _defaultAdder();
+  ChatService({String? currentUserId, MessageDocAdder? messageDocAdder})
+    : _currentUserId =
+          currentUserId ??
+          (firebase_auth.FirebaseAuth.instance.currentUser?.uid ?? ''),
+      _addMessageDoc = messageDocAdder ?? _defaultAdder();
 
   /// Sends a chat message in the match identified by [matchId].
   ///

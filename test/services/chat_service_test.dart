@@ -32,10 +32,7 @@ class _FakeAdder {
 }
 
 ChatService _makeService(_FakeAdder adder) {
-  return ChatService(
-    currentUserId: _currentUid,
-    messageDocAdder: adder.call,
-  );
+  return ChatService(currentUserId: _currentUid, messageDocAdder: adder.call);
 }
 
 // ---------------------------------------------------------------------------
@@ -46,36 +43,30 @@ void main() {
   group('ChatService.sendMessage() — WBS 9.4', () {
     // ── Test 1: empty / whitespace-only text rejected ─────────────────────────
 
-    test(
-      "sendMessage('m1', '   ') throws EmptyMessageException",
-      () async {
-        final adder = _FakeAdder();
-        final service = _makeService(adder);
+    test("sendMessage('m1', '   ') throws EmptyMessageException", () async {
+      final adder = _FakeAdder();
+      final service = _makeService(adder);
 
-        expect(
-          () => service.sendMessage(_matchId, '   '),
-          throwsA(isA<EmptyMessageException>()),
-        );
+      expect(
+        () => service.sendMessage(_matchId, '   '),
+        throwsA(isA<EmptyMessageException>()),
+      );
 
-        // No Firestore write should have happened.
-        expect(adder.calls, isEmpty);
-      },
-    );
+      // No Firestore write should have happened.
+      expect(adder.calls, isEmpty);
+    });
 
-    test(
-      "sendMessage('m1', '') throws EmptyMessageException",
-      () async {
-        final adder = _FakeAdder();
-        final service = _makeService(adder);
+    test("sendMessage('m1', '') throws EmptyMessageException", () async {
+      final adder = _FakeAdder();
+      final service = _makeService(adder);
 
-        expect(
-          () => service.sendMessage(_matchId, ''),
-          throwsA(isA<EmptyMessageException>()),
-        );
+      expect(
+        () => service.sendMessage(_matchId, ''),
+        throwsA(isA<EmptyMessageException>()),
+      );
 
-        expect(adder.calls, isEmpty);
-      },
-    );
+      expect(adder.calls, isEmpty);
+    });
 
     // ── Test 2: text > 1000 chars rejected ────────────────────────────────────
 
@@ -94,18 +85,15 @@ void main() {
       },
     );
 
-    test(
-      'sendMessage with exactly 1000 chars succeeds (boundary)',
-      () async {
-        final adder = _FakeAdder();
-        final service = _makeService(adder);
+    test('sendMessage with exactly 1000 chars succeeds (boundary)', () async {
+      final adder = _FakeAdder();
+      final service = _makeService(adder);
 
-        await service.sendMessage(_matchId, 'x' * 1000);
+      await service.sendMessage(_matchId, 'x' * 1000);
 
-        expect(adder.calls.length, 1);
-        expect(adder.calls.first.data['text'], 'x' * 1000);
-      },
-    );
+      expect(adder.calls.length, 1);
+      expect(adder.calls.first.data['text'], 'x' * 1000);
+    });
 
     // ── Test 3: successful send writes all required fields ────────────────────
 
