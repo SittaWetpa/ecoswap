@@ -356,6 +356,65 @@ describe("firestore rules — /swipes/{swipeId}", () => {
       updateDoc(doc(alice, "swipes/swipe-1"), { direction: "left" }),
     );
   });
+
+  // -------------------------------------------------------------------------
+  // WBS 8.1 — desiredItemId validation on right-swipe vs left-swipe
+  // -------------------------------------------------------------------------
+
+  test("WBS 8.1 — right-swipe with a non-empty desiredItemId is allowed", async () => {
+    const alice = testEnv.authenticatedContext("alice").firestore();
+    await assertSucceeds(
+      setDoc(doc(alice, "swipes/swipe-right-1"), {
+        swiperId: "alice",
+        targetUserId: "bob",
+        desiredItemId: "item-1",
+        direction: "right",
+        createdAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  test("WBS 8.1 — right-swipe with empty desiredItemId is denied", async () => {
+    // A client cannot write a right-swipe without declaring an item (F16/F19).
+    const alice = testEnv.authenticatedContext("alice").firestore();
+    await assertFails(
+      setDoc(doc(alice, "swipes/swipe-right-bad"), {
+        swiperId: "alice",
+        targetUserId: "bob",
+        desiredItemId: "", // empty — not allowed for right-swipe
+        direction: "right",
+        createdAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  test("WBS 8.1 — left-swipe with empty desiredItemId is allowed", async () => {
+    // Left-swipes use the empty-string sentinel per the WBS 8.1 spec.
+    const alice = testEnv.authenticatedContext("alice").firestore();
+    await assertSucceeds(
+      setDoc(doc(alice, "swipes/swipe-left-1"), {
+        swiperId: "alice",
+        targetUserId: "bob",
+        desiredItemId: "", // empty sentinel for left-swipe
+        direction: "left",
+        createdAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  test("WBS 8.1 — left-swipe with a non-empty desiredItemId is denied", async () => {
+    // Left-swipes must use the empty sentinel; setting a real item id is invalid.
+    const alice = testEnv.authenticatedContext("alice").firestore();
+    await assertFails(
+      setDoc(doc(alice, "swipes/swipe-left-bad"), {
+        swiperId: "alice",
+        targetUserId: "bob",
+        desiredItemId: "item-1", // must be '' for a left-swipe
+        direction: "left",
+        createdAt: serverTimestamp(),
+      }),
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------

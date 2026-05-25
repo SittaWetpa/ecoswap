@@ -19,6 +19,8 @@ import 'package:flutter/material.dart';
 
 import 'package:ecoswap/models/item.dart';
 import 'package:ecoswap/models/user.dart';
+import 'package:ecoswap/services/swipe_service.dart';
+import 'package:ecoswap/widgets/empty_state.dart';
 import 'package:ecoswap/widgets/proximity_filter_sheet.dart';
 
 // ---------------------------------------------------------------------------
@@ -498,6 +500,16 @@ class DiscoverScreen extends StatefulWidget {
   /// Called when the user taps a card (without swiping).
   final ValueChanged<User>? onCardTap;
 
+  /// Injectable [SwipeService] for writing swipe documents to Firestore.
+  ///
+  /// Left-swipes are recorded immediately inside [DiscoverScreen] before the
+  /// next card animates in (WBS 8.1 acceptance criterion 3).  Right-swipes
+  /// still surface via [onRightSwipe] so the item picker (WBS 8.2) can supply
+  /// the [desiredItemId] before [SwipeService.recordSwipe] is called.
+  ///
+  /// Pass `null` (or omit) in widget tests that do not exercise Firestore.
+  final SwipeService? swipeService;
+
   const DiscoverScreen({
     super.key,
     required this.candidates,
@@ -507,6 +519,7 @@ class DiscoverScreen extends StatefulWidget {
     this.onRightSwipe,
     this.onLeftSwipe,
     this.onCardTap,
+    this.swipeService,
   });
 
   @override
@@ -562,6 +575,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         SwipeRecord(user: swipedUser, direction: 'right'),
       );
     } else if (direction == AxisDirection.left) {
+      // Write the swipe document BEFORE the next card animates in (WBS 8.1).
+      // Fire-and-forget: the Future is intentionally unawaited here because
+      // _handleSwipeEnd is synchronous. The card removal and Firestore write
+      // are independent — a write failure does not block the UI.
+      widget.swipeService?.recordSwipe(swipedUser.uid, 'left');
+
       widget.onLeftSwipe?.call(
         SwipeRecord(user: swipedUser, direction: 'left'),
       );
@@ -741,62 +760,25 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   // ---------------------------------------------------------------------------
-  // Empty state
+  // Empty state — WBS 7.6
   // ---------------------------------------------------------------------------
 
+  /// Shown when [_deck] is empty (feed query returned zero candidates).
+  /// Uses the reusable [EmptyState] widget (WBS 7.6 deliverable).
+  /// Copy is locked per locked-decision rules (no "search radius" language):
+  ///   headline:     "No one nearby yet"
+  ///   description:  "Try widening your proximity filter, or check back later —
+  ///                  new swappers join every day."
+  ///   cta:          "Widen search"  →  opens the proximity filter sheet
   Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.explore_outlined, size: 40, color: _kTextTertiary),
-            const SizedBox(height: 16),
-            const Text(
-              'No one nearby yet',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: _kTextPrimary,
-                height: 1.4,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Try widening your proximity filter, or check back later — new swappers join every day.',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w400,
-                color: _kTextSecondary,
-                height: 1.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _kGreenPrimary,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  elevation: 0,
-                ),
-                onPressed: _openProximitySheet,
-                child: const Text(
-                  'Include nearby provinces',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return EmptyState(
+      icon: const Icon(Icons.explore),
+      headline: 'No one nearby yet',
+      description:
+          'Try widening your proximity filter, or check back later — '
+          'new swappers join every day.',
+      ctaLabel: 'Widen search',
+      onCta: _openProximitySheet,
     );
   }
 }
