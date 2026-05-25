@@ -104,14 +104,12 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   /// Count how many messages were sent by [currentUserId].
-  int get _myMessageCount => widget.messages
-      .where((m) => m.senderId == widget.currentUserId)
-      .length;
+  int get _myMessageCount =>
+      widget.messages.where((m) => m.senderId == widget.currentUserId).length;
 
   /// Count how many messages were sent by anyone else.
-  int get _theirMessageCount => widget.messages
-      .where((m) => m.senderId != widget.currentUserId)
-      .length;
+  int get _theirMessageCount =>
+      widget.messages.where((m) => m.senderId != widget.currentUserId).length;
 
   /// The "Ready to swap" CTA is visible only when both sides have ≥ 3 messages.
   bool get _readyVisible => _myMessageCount >= 3 && _theirMessageCount >= 3;
@@ -129,8 +127,7 @@ class _ChatScreenState extends State<ChatScreen> {
               myItemName: widget.myItemName,
               theirItemName: widget.theirItemName,
               showReadyCta: _readyVisible,
-              onBack: widget.onBack ??
-                  () => Navigator.of(context).maybePop(),
+              onBack: widget.onBack ?? () => Navigator.of(context).maybePop(),
               onReadyExchange: widget.onReadyExchange,
             ),
             Expanded(
@@ -354,10 +351,7 @@ class _MessageList extends StatelessWidget {
   final List<Message> messages;
   final String currentUserId;
 
-  const _MessageList({
-    required this.messages,
-    required this.currentUserId,
-  });
+  const _MessageList({required this.messages, required this.currentUserId});
 
   @override
   Widget build(BuildContext context) {
@@ -373,10 +367,7 @@ class _MessageList extends StatelessWidget {
         final isOwn = msg.senderId == currentUserId;
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: MessageBubble(
-            text: msg.text,
-            isOwn: isOwn,
-          ),
+          child: MessageBubble(text: msg.text, isOwn: isOwn),
         );
       },
     );
@@ -402,11 +393,7 @@ class MessageBubble extends StatelessWidget {
   /// True when the message was sent by the current user.
   final bool isOwn;
 
-  const MessageBubble({
-    super.key,
-    required this.text,
-    required this.isOwn,
-  });
+  const MessageBubble({super.key, required this.text, required this.isOwn});
 
   @override
   Widget build(BuildContext context) {
@@ -477,10 +464,7 @@ class _InputBar extends StatelessWidget {
               style: const TextStyle(fontSize: 14, color: _kTextPrimary),
               decoration: InputDecoration(
                 hintText: 'Message...',
-                hintStyle: const TextStyle(
-                  fontSize: 14,
-                  color: _kTextTertiary,
-                ),
+                hintStyle: const TextStyle(fontSize: 14, color: _kTextTertiary),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 10,
@@ -497,8 +481,7 @@ class _InputBar extends StatelessWidget {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(9999),
-                  borderSide:
-                      const BorderSide(color: _kGreenPrimary, width: 2),
+                  borderSide: const BorderSide(color: _kGreenPrimary, width: 2),
                 ),
               ),
             ),
