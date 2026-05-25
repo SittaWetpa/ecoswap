@@ -106,17 +106,14 @@ void main() {
     );
 
     // ── Test 4: cold-start — user document does not exist at all ────────────
-    test(
-      'returns zeros when the user document does not exist',
-      () async {
-        final reader = _FakeReader({'uid-missing': null});
-        final service = _serviceFor('uid-missing', reader);
+    test('returns zeros when the user document does not exist', () async {
+      final reader = _FakeReader({'uid-missing': null});
+      final service = _serviceFor('uid-missing', reader);
 
-        final impact = await service.getCurrentUserImpact();
+      final impact = await service.getCurrentUserImpact();
 
-        expect(impact, equals(UserImpact.zero));
-      },
-    );
+      expect(impact, equals(UserImpact.zero));
+    });
 
     // ── Test 5: integer/float coercion ──────────────────────────────────────
     test(

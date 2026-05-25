@@ -26,11 +26,7 @@ class UserImpact {
   /// Zero impact — used as the cold-start default for new users whose
   /// `/users/{uid}` document is missing the counter fields (or missing
   /// entirely).
-  static const UserImpact zero = UserImpact(
-    trades: 0,
-    co2Kg: 0,
-    wasteKg: 0,
-  );
+  static const UserImpact zero = UserImpact(trades: 0, co2Kg: 0, wasteKg: 0);
 
   @override
   bool operator ==(Object other) =>
@@ -75,8 +71,10 @@ typedef CurrentUidProvider = String? Function();
 
 UserDocReader _defaultUserDocReader() {
   return (String uid) async {
-    final snap =
-        await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    final snap = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
     if (!snap.exists) return null;
     return snap.data();
   };
@@ -105,8 +103,8 @@ class ImpactService {
   ImpactService({
     UserDocReader? userDocReader,
     CurrentUidProvider? currentUidProvider,
-  })  : _readUserDoc = userDocReader ?? _defaultUserDocReader(),
-        _currentUid = currentUidProvider ?? _defaultCurrentUidProvider();
+  }) : _readUserDoc = userDocReader ?? _defaultUserDocReader(),
+       _currentUid = currentUidProvider ?? _defaultCurrentUidProvider();
 
   /// Returns the current user's impact totals as a single
   /// document-read result.
