@@ -53,12 +53,14 @@ void main() {
         messageIds: ['msg-1', 'msg-2', 'msg-3'],
       );
 
-      expect(fake.calls.length, equals(1),
-          reason: 'committer should be called exactly once');
+      expect(
+        fake.calls.length,
+        equals(1),
+        reason: 'committer should be called exactly once',
+      );
 
       final batch = fake.calls.first;
-      expect(batch.length, equals(3),
-          reason: 'one ReadUpdate per messageId');
+      expect(batch.length, equals(3), reason: 'one ReadUpdate per messageId');
 
       expect(batch[0].matchId, equals(_kMatchId));
       expect(batch[0].messageId, equals('msg-1'));
@@ -76,36 +78,39 @@ void main() {
     // -----------------------------------------------------------------------
     // Test 2 — idempotency: calling twice produces two identical commits
     // -----------------------------------------------------------------------
-    test(
-      'is idempotent — calling twice on same ids does not throw and '
-      'produces the same batch contents both times',
-      () async {
-        final fake = _FakeCommitter();
-        final service = _makeService(fake);
+    test('is idempotent — calling twice on same ids does not throw and '
+        'produces the same batch contents both times', () async {
+      final fake = _FakeCommitter();
+      final service = _makeService(fake);
 
-        // First call
-        await service.markRead(
-          matchId: _kMatchId,
-          currentUserId: _kUserId,
-          messageIds: ['msg-a', 'msg-b'],
-        );
+      // First call
+      await service.markRead(
+        matchId: _kMatchId,
+        currentUserId: _kUserId,
+        messageIds: ['msg-a', 'msg-b'],
+      );
 
-        // Second call with the same arguments — must not throw
-        await service.markRead(
-          matchId: _kMatchId,
-          currentUserId: _kUserId,
-          messageIds: ['msg-a', 'msg-b'],
-        );
+      // Second call with the same arguments — must not throw
+      await service.markRead(
+        matchId: _kMatchId,
+        currentUserId: _kUserId,
+        messageIds: ['msg-a', 'msg-b'],
+      );
 
-        expect(fake.calls.length, equals(2),
-            reason: 'committer called once per markRead invocation');
+      expect(
+        fake.calls.length,
+        equals(2),
+        reason: 'committer called once per markRead invocation',
+      );
 
-        // Both batches must be identical — arrayUnion makes the second a no-op
-        // at the Firestore layer.
-        expect(fake.calls[0], equals(fake.calls[1]),
-            reason: 'both commits carry the same ReadUpdate records');
-      },
-    );
+      // Both batches must be identical — arrayUnion makes the second a no-op
+      // at the Firestore layer.
+      expect(
+        fake.calls[0],
+        equals(fake.calls[1]),
+        reason: 'both commits carry the same ReadUpdate records',
+      );
+    });
 
     // -----------------------------------------------------------------------
     // Test 3 — empty messageIds: committer is never called
@@ -120,8 +125,11 @@ void main() {
         messageIds: [],
       );
 
-      expect(fake.calls, isEmpty,
-          reason: 'no Firestore write should occur for an empty list');
+      expect(
+        fake.calls,
+        isEmpty,
+        reason: 'no Firestore write should occur for an empty list',
+      );
     });
 
     // -----------------------------------------------------------------------
