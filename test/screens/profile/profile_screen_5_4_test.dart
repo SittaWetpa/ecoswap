@@ -12,6 +12,7 @@ import 'package:ecoswap/screens/profile/edit_profile_screen.dart';
 import 'package:ecoswap/screens/profile/profile_screen.dart';
 import 'package:ecoswap/services/district_service.dart';
 import 'package:ecoswap/services/photo_service.dart';
+import 'package:ecoswap/widgets/impact_stat_strip.dart';
 
 // ---------------------------------------------------------------------------
 // Fake Firebase Auth — never talks to Firebase

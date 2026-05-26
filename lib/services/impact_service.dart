@@ -28,6 +28,26 @@ class UserImpact {
   /// entirely).
   static const UserImpact zero = UserImpact(trades: 0, co2Kg: 0, wasteKg: 0);
 
+  // ---------------------------------------------------------------------------
+  // Shared formatting — used by both the Impact Dashboard (WBS 11.3) and the
+  // Profile Impact Stat Strip (WBS 11.4). Keeping the rules in one place is
+  // what guarantees the WBS 11.4 acceptance criterion "Values match what's
+  // shown on the dashboard".
+  //
+  //   - Swaps (trades count) → integer with no decimals.
+  //   - CO₂ saved (kg)       → one decimal place.
+  //   - Waste diverted (kg)  → one decimal place.
+  // ---------------------------------------------------------------------------
+
+  /// Integer-formatted trades count (e.g. `7`).
+  String get formattedTrades => '$trades';
+
+  /// CO₂ saved in kg, formatted to one decimal place (e.g. `47.5`).
+  String get formattedCo2Kg => co2Kg.toStringAsFixed(1);
+
+  /// Waste diverted in kg, formatted to one decimal place (e.g. `12.3`).
+  String get formattedWasteKg => wasteKg.toStringAsFixed(1);
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
