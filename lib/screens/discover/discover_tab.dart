@@ -13,12 +13,13 @@
 library;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ecoswap/models/item.dart';
 import 'package:ecoswap/models/user.dart' as app;
+import 'package:ecoswap/providers/auth_provider.dart';
 import 'package:ecoswap/screens/discover/discover_screen.dart';
 import 'package:ecoswap/services/feed_service.dart';
 import 'package:ecoswap/services/item_service.dart';
@@ -39,10 +40,12 @@ typedef CurrentUserFetcher = Future<app.User?> Function();
 // Default live implementations
 // ---------------------------------------------------------------------------
 
-/// Live [CurrentUserFetcher] — reads from [FirebaseAuth] + [FirebaseFirestore].
-CurrentUserFetcher _defaultCurrentUserFetcher() {
+/// Live [CurrentUserFetcher] — reads the current uid from [AuthProvider]
+/// (per WBS 4.4 acceptance: only the provider may read [FirebaseAuth] directly)
+/// then loads the Firestore `/users/{uid}` document.
+CurrentUserFetcher _defaultCurrentUserFetcher(AuthProvider authProvider) {
   return () async {
-    final uid = fb_auth.FirebaseAuth.instance.currentUser?.uid;
+    final uid = authProvider.currentUser?.uid;
     if (uid == null) return null;
     final doc = await FirebaseFirestore.instance
         .collection('users')
@@ -114,8 +117,11 @@ class _DiscoverTabState extends State<DiscoverTab> {
 
     try {
       // 1. Resolve the current user — injectable for tests.
+      //    Live path reads the uid via AuthProvider so this screen does not
+      //    touch FirebaseAuth directly (WBS 4.4 locked acceptance).
       final fetchCurrentUser =
-          widget.currentUserFetcherOverride ?? _defaultCurrentUserFetcher();
+          widget.currentUserFetcherOverride ??
+          _defaultCurrentUserFetcher(context.read<AuthProvider>());
       final me = await fetchCurrentUser();
 
       if (me == null) {
