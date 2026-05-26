@@ -73,28 +73,27 @@ Widget _buildScreen({
 void main() {
   group('ImpactDashboardScreen — WBS 11.3', () {
     // ── Acceptance: Hero displays total CO₂ from /users/{uid}.totalCo2Saved ──
-    testWidgets(
-      'hero number reads from totalCo2Saved (via ImpactService)',
-      (tester) async {
-        await tester.pumpWidget(
-          _buildScreen(
-            impact: const UserImpact(trades: 7, co2Kg: 47.5, wasteKg: 12.3),
-          ),
-        );
-        // Pump until the FutureBuilder resolves.
-        await tester.pumpAndSettle();
+    testWidgets('hero number reads from totalCo2Saved (via ImpactService)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _buildScreen(
+          impact: const UserImpact(trades: 7, co2Kg: 47.5, wasteKg: 12.3),
+        ),
+      );
+      // Pump until the FutureBuilder resolves.
+      await tester.pumpAndSettle();
 
-        // The hero RichText contains the value "47.5" (one decimal place,
-        // sourced from totalCo2Saved).
-        final hero = find.byKey(const Key('hero_co2_number'));
-        expect(hero, findsOneWidget);
+      // The hero RichText contains the value "47.5" (one decimal place,
+      // sourced from totalCo2Saved).
+      final hero = find.byKey(const Key('hero_co2_number'));
+      expect(hero, findsOneWidget);
 
-        final richText = tester.widget<RichText>(hero);
-        final fullText = richText.text.toPlainText();
-        expect(fullText, contains('47.5'));
-        expect(fullText, contains('kg'));
-      },
-    );
+      final richText = tester.widget<RichText>(hero);
+      final fullText = richText.text.toPlainText();
+      expect(fullText, contains('47.5'));
+      expect(fullText, contains('kg'));
+    });
 
     // ── Acceptance: 3 stat surfaces only (hero + 2 cards) ──────────────────
     testWidgets(
@@ -191,10 +190,7 @@ void main() {
           _buildScreen(
             impact: const UserImpact(trades: 7, co2Kg: 47.5, wasteKg: 12.3),
             tradesStream: Stream.value([
-              _fakeTrade(
-                tradeId: 't1',
-                completedAt: DateTime(2026, 5, 26),
-              ),
+              _fakeTrade(tradeId: 't1', completedAt: DateTime(2026, 5, 26)),
             ]),
           ),
         );
@@ -229,22 +225,19 @@ void main() {
     //
     // Locked decision (CLAUDE.md): the Impact top bar is title-only. AppBar
     // has no leading widget and no actions.
-    testWidgets(
-      'top bar is title-only (no cog, no info, no share icon)',
-      (tester) async {
-        await tester.pumpWidget(
-          _buildScreen(
-            impact: const UserImpact(trades: 0, co2Kg: 0, wasteKg: 0),
-          ),
-        );
-        await tester.pumpAndSettle();
+    testWidgets('top bar is title-only (no cog, no info, no share icon)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _buildScreen(impact: const UserImpact(trades: 0, co2Kg: 0, wasteKg: 0)),
+      );
+      await tester.pumpAndSettle();
 
-        final appBar = tester.widget<AppBar>(find.byType(AppBar));
-        expect(appBar.leading, isNull);
-        expect(appBar.actions == null || appBar.actions!.isEmpty, isTrue);
-        // Title text is "Impact".
-        expect(find.text('Impact'), findsOneWidget);
-      },
-    );
+      final appBar = tester.widget<AppBar>(find.byType(AppBar));
+      expect(appBar.leading, isNull);
+      expect(appBar.actions == null || appBar.actions!.isEmpty, isTrue);
+      // Title text is "Impact".
+      expect(find.text('Impact'), findsOneWidget);
+    });
   });
 }
