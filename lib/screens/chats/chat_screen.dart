@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../models/message.dart';
 import '../../services/chat_service.dart';
+import '../../widgets/qr_role_pick_modal.dart';
 
 // ---------------------------------------------------------------------------
 // Design tokens (EcoSwap Style Guide)
@@ -306,6 +307,25 @@ class _ChatScreenState extends State<ChatScreen> {
   /// The "Ready to swap" CTA is visible only when both sides have ≥ 3 messages.
   bool get _readyVisible => _myMessageCount >= 3 && _theirMessageCount >= 3;
 
+  /// WBS 9.6 — Called when the "Exchange" CTA is tapped.
+  ///
+  /// If [widget.onReadyExchange] is provided the caller handles navigation
+  /// (used in tests to intercept routing without a real Navigator map).
+  ///
+  /// Otherwise, when [widget.matchId] is available, the QR role-pick modal is
+  /// shown so the user can choose to show or scan the QR code.  The matchId is
+  /// passed as the route argument to [kQRShowRoute] or [kQRScanRoute].
+  void _handleReadyExchange(BuildContext context) {
+    if (widget.onReadyExchange != null) {
+      widget.onReadyExchange!();
+      return;
+    }
+    final mid = widget.matchId;
+    if (mid != null && mid.isNotEmpty) {
+      QrRolePickModal.show(context, matchId: mid);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -320,7 +340,7 @@ class _ChatScreenState extends State<ChatScreen> {
               theirItemName: widget.theirItemName,
               showReadyCta: _readyVisible,
               onBack: widget.onBack ?? () => Navigator.of(context).maybePop(),
-              onReadyExchange: widget.onReadyExchange,
+              onReadyExchange: () => _handleReadyExchange(context),
             ),
             Expanded(
               child: _MessageList(

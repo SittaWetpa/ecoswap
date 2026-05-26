@@ -4,7 +4,10 @@ import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart' as auth_prov;
 import 'screens/auth/login_screen.dart';
 import 'screens/profile_setup/setup_flow.dart';
+import 'screens/qr/qr_scan_screen.dart';
+import 'screens/qr/qr_show_screen.dart';
 import 'screens/shell/main_shell.dart';
+import 'widgets/qr_role_pick_modal.dart' show kQRShowRoute, kQRScanRoute;
 
 // Design token
 const _kGreenPrimary = Color(0xFF1D9E75);
@@ -47,6 +50,9 @@ class EcoSwapApp extends StatelessWidget {
     // Named routes shared by both app paths.
     final routes = <String, WidgetBuilder>{
       '/profile-setup': (_) => const SetupFlowScreen(),
+      // WBS 9.6 — QR exchange navigation targets (stubs until WBS 10.3/10.4).
+      kQRShowRoute: (_) => const QrShowScreen(),
+      kQRScanRoute: (_) => const QrScanScreen(),
     };
 
     // When a raw stream is injected (legacy test path), skip the real
