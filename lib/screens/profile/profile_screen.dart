@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/user.dart' as app_user;
 import '../../providers/auth_provider.dart' as auth_prov;
+import '../../services/impact_service.dart';
+import '../../widgets/impact_stat_strip.dart';
 import 'edit_profile_screen.dart';
 
 // ---------------------------------------------------------------------------
@@ -37,49 +39,6 @@ Stream<Map<String, dynamic>?> _defaultUserDocReader(String uid) {
 }
 
 // ---------------------------------------------------------------------------
-// SummaryStat — impact stat atom (matches prototype SummaryStat component)
-// ---------------------------------------------------------------------------
-
-/// A single stat in the impact summary strip.
-///
-/// Corresponds to `SummaryStat` in `prototype/src/screens/profile.jsx`.
-class SummaryStat extends StatelessWidget {
-  /// The numeric or formatted value to display (e.g. "7", "47.5").
-  final String value;
-
-  /// Label below the value (e.g. "Swaps", "kg CO₂", "kg waste").
-  final String label;
-
-  const SummaryStat({super.key, required this.value, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: _kGreenDark,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-            color: _kGreenDark.withValues(alpha: 0.7),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
 // ProfileScreen
 // ---------------------------------------------------------------------------
 
@@ -108,11 +67,21 @@ class ProfileScreen extends StatelessWidget {
   /// Called when the user taps "My items" row.
   final VoidCallback? onMyItems;
 
+  /// Injectable [ImpactService] for the embedded [ImpactStatStrip] (WBS 11.4).
+  ///
+  /// When `null` (the production default), the strip uses the values
+  /// already streamed from `/users/{uid}` as its seed and does NOT make
+  /// an extra service call — the user-doc stream is the canonical
+  /// source on this screen. Tests pass a fake to verify the strip's
+  /// service-driven code path.
+  final ImpactService? impactService;
+
   const ProfileScreen({
     super.key,
     this.userDocReader,
     this.getCurrentUid,
     this.onMyItems,
+    this.impactService,
   });
 
   void _showLogoutDialog(
@@ -183,6 +152,7 @@ class ProfileScreen extends StatelessWidget {
                 return _ProfileBody(
                   user: user,
                   uid: uid,
+                  impactService: impactService,
                   onEdit: () {
                     Navigator.push(
                       context,
@@ -213,6 +183,7 @@ class _ProfileBody extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback? onMyItems;
   final VoidCallback onLogout;
+  final ImpactService? impactService;
 
   const _ProfileBody({
     required this.user,
@@ -220,6 +191,7 @@ class _ProfileBody extends StatelessWidget {
     required this.onEdit,
     required this.onMyItems,
     required this.onLogout,
+    required this.impactService,
   });
 
   String _districtLabel(app_user.HomeDistrict d) {
@@ -280,21 +252,19 @@ class _ProfileBody extends StatelessWidget {
             ),
           ),
 
-          // ── Impact summary strip ──────────────────────────────────────────
-          Container(
-            key: const Key('impactSummary'),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            decoration: BoxDecoration(
-              color: _kGreenSoft,
-              borderRadius: BorderRadius.circular(12), // --radius-lg
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                SummaryStat(value: '$tradesCount', label: 'Swaps'),
-                SummaryStat(value: co2.toStringAsFixed(1), label: 'kg CO₂'),
-                SummaryStat(value: waste.toStringAsFixed(1), label: 'kg waste'),
-              ],
+          // ── Impact summary strip (WBS 11.4) ───────────────────────────────
+          //
+          // The Profile screen already streams `/users/{uid}` for other
+          // fields, so we seed the strip with the counter values from that
+          // same snapshot to avoid a loading flash. The strip widget is
+          // the canonical home of impact-strip formatting and styling —
+          // see lib/widgets/impact_stat_strip.dart.
+          ImpactStatStrip(
+            impactService: impactService,
+            initialImpact: UserImpact(
+              trades: tradesCount,
+              co2Kg: co2,
+              wasteKg: waste,
             ),
           ),
 

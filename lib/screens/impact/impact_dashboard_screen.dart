@@ -345,7 +345,7 @@ class ImpactDashboardScreen extends StatelessWidget {
                     child: MetricCard(
                       key: const Key('metric_card_swaps'),
                       icon: Icons.swap_horiz,
-                      value: '${impact.trades}',
+                      value: impact.formattedTrades,
                       unit: '',
                       label: 'Swaps completed',
                     ),
@@ -355,7 +355,7 @@ class ImpactDashboardScreen extends StatelessWidget {
                     child: MetricCard(
                       key: const Key('metric_card_waste'),
                       icon: Icons.delete_outline,
-                      value: impact.wasteKg.toStringAsFixed(1),
+                      value: impact.formattedWasteKg,
                       unit: 'kg',
                       label: 'Waste diverted',
                     ),
