@@ -67,11 +67,7 @@ void main() {
       await tester.pumpWidget(
         _wrap(
           ImpactStatStrip(
-            initialImpact: const UserImpact(
-              trades: 0,
-              co2Kg: 0,
-              wasteKg: 0,
-            ),
+            initialImpact: const UserImpact(trades: 0, co2Kg: 0, wasteKg: 0),
           ),
         ),
       );
@@ -80,7 +76,9 @@ void main() {
       expect(find.byKey(const Key('impactSummary')), findsOneWidget);
     });
 
-    testWidgets('renders all 3 labels: Swaps, kg CO₂, kg waste', (tester) async {
+    testWidgets('renders all 3 labels: Swaps, kg CO₂, kg waste', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
           ImpactStatStrip(
@@ -142,11 +140,7 @@ void main() {
               impactService: service,
               // Stale seed value the strip should overwrite after the
               // service call resolves.
-              initialImpact: const UserImpact(
-                trades: 0,
-                co2Kg: 0,
-                wasteKg: 0,
-              ),
+              initialImpact: const UserImpact(trades: 0, co2Kg: 0, wasteKg: 0),
             ),
           ),
         );
@@ -164,113 +158,97 @@ void main() {
       },
     );
 
-    testWidgets(
-      'integer formatting for swaps (no decimals)',
-      (tester) async {
-        await tester.pumpWidget(
-          _wrap(
-            ImpactStatStrip(
-              initialImpact: const UserImpact(
-                trades: 12,
-                co2Kg: 0,
-                wasteKg: 0,
-              ),
+    testWidgets('integer formatting for swaps (no decimals)', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          ImpactStatStrip(
+            initialImpact: const UserImpact(trades: 12, co2Kg: 0, wasteKg: 0),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('12'), findsOneWidget);
+      expect(
+        find.text('12.0'),
+        findsNothing,
+        reason: 'Swaps must be an integer with no decimals',
+      );
+    });
+
+    testWidgets('one-decimal formatting for CO₂ and waste', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          ImpactStatStrip(
+            initialImpact: const UserImpact(trades: 0, co2Kg: 5, wasteKg: 1),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // toStringAsFixed(1) on a whole number produces a trailing ".0".
+      expect(find.text('5.0'), findsOneWidget);
+      expect(find.text('1.0'), findsOneWidget);
+    });
+
+    testWidgets('falls back to seed (or zero) when the service throws', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          ImpactStatStrip(
+            impactService: _throwingService(),
+            initialImpact: const UserImpact(
+              trades: 4,
+              co2Kg: 2.5,
+              wasteKg: 0.8,
             ),
           ),
-        );
-        await tester.pump();
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
 
-        expect(find.text('12'), findsOneWidget);
-        expect(
-          find.text('12.0'),
-          findsNothing,
-          reason: 'Swaps must be an integer with no decimals',
-        );
-      },
-    );
-
-    testWidgets(
-      'one-decimal formatting for CO₂ and waste',
-      (tester) async {
-        await tester.pumpWidget(
-          _wrap(
-            ImpactStatStrip(
-              initialImpact: const UserImpact(
-                trades: 0,
-                co2Kg: 5,
-                wasteKg: 1,
-              ),
-            ),
-          ),
-        );
-        await tester.pump();
-
-        // toStringAsFixed(1) on a whole number produces a trailing ".0".
-        expect(find.text('5.0'), findsOneWidget);
-        expect(find.text('1.0'), findsOneWidget);
-      },
-    );
-
-    testWidgets(
-      'falls back to seed (or zero) when the service throws',
-      (tester) async {
-        await tester.pumpWidget(
-          _wrap(
-            ImpactStatStrip(
-              impactService: _throwingService(),
-              initialImpact: const UserImpact(
-                trades: 4,
-                co2Kg: 2.5,
-                wasteKg: 0.8,
-              ),
-            ),
-          ),
-        );
-        await tester.pump();
-        await tester.pump();
-
-        // Seed values are preserved when the service errors.
-        expect(find.text('4'), findsOneWidget);
-        expect(find.text('2.5'), findsOneWidget);
-        expect(find.text('0.8'), findsOneWidget);
-      },
-    );
+      // Seed values are preserved when the service errors.
+      expect(find.text('4'), findsOneWidget);
+      expect(find.text('2.5'), findsOneWidget);
+      expect(find.text('0.8'), findsOneWidget);
+    });
   });
 
   // -------------------------------------------------------------------------
   // Locked-decision guardrails
   // -------------------------------------------------------------------------
   group('ImpactStatStrip — no out-of-scope UI elements', () {
-    testWidgets(
-      'no trend arrows, no "this month", no comparison copy',
-      (tester) async {
-        await tester.pumpWidget(
-          _wrap(
-            ImpactStatStrip(
-              initialImpact: const UserImpact(
-                trades: 7,
-                co2Kg: 47.5,
-                wasteKg: 12.3,
-              ),
+    testWidgets('no trend arrows, no "this month", no comparison copy', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          ImpactStatStrip(
+            initialImpact: const UserImpact(
+              trades: 7,
+              co2Kg: 47.5,
+              wasteKg: 12.3,
             ),
           ),
-        );
-        await tester.pump();
+        ),
+      );
+      await tester.pump();
 
-        // No trend-arrow icons.
-        expect(find.byIcon(Icons.arrow_upward), findsNothing);
-        expect(find.byIcon(Icons.arrow_downward), findsNothing);
-        expect(find.byIcon(Icons.trending_up), findsNothing);
-        expect(find.byIcon(Icons.trending_down), findsNothing);
+      // No trend-arrow icons.
+      expect(find.byIcon(Icons.arrow_upward), findsNothing);
+      expect(find.byIcon(Icons.arrow_downward), findsNothing);
+      expect(find.byIcon(Icons.trending_up), findsNothing);
+      expect(find.byIcon(Icons.trending_down), findsNothing);
 
-        // No comparison-copy strings.
-        expect(find.textContaining('This month'), findsNothing);
-        expect(find.textContaining('this month'), findsNothing);
-        expect(find.textContaining('↑'), findsNothing);
-        expect(find.textContaining('↓'), findsNothing);
-        expect(find.textContaining('vs'), findsNothing);
-      },
-    );
+      // No comparison-copy strings.
+      expect(find.textContaining('This month'), findsNothing);
+      expect(find.textContaining('this month'), findsNothing);
+      expect(find.textContaining('↑'), findsNothing);
+      expect(find.textContaining('↓'), findsNothing);
+      expect(find.textContaining('vs'), findsNothing);
+    });
 
     testWidgets('uses "Swaps" not "Trades" in the UI label', (tester) async {
       await tester.pumpWidget(
