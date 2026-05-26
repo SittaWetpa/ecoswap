@@ -229,9 +229,9 @@ void main() {
 
       await tester.pumpWidget(_buildScreen(item: item));
 
-      // The photo field should show the "Change photo" button,
-      // which only appears when hasPhoto == true
-      expect(find.text('Change photo'), findsOneWidget);
+      // The photo field should show the "Change" button overlay,
+      // which only appears when hasPhoto == true (label changed in image-upload fix)
+      expect(find.text('Change'), findsOneWidget);
     });
 
     testWidgets('shows Edit item title and Save changes button', (
