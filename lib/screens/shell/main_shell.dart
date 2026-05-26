@@ -15,7 +15,7 @@ import 'package:flutter/material.dart';
 
 import '../discover/discover_tab.dart';
 import '../chats/match_list_screen.dart';
-import '../impact/impact_placeholder_screen.dart';
+import '../impact/impact_dashboard_screen.dart';
 import '../profile/profile_screen.dart';
 import '../items/my_items_screen.dart';
 import '../items/upload_item_screen.dart';
@@ -123,7 +123,7 @@ class _MainShellState extends State<MainShell> {
       case 1:
         return const MatchListScreen();
       case 2:
-        return const ImpactPlaceholderScreen();
+        return const ImpactDashboardScreen();
       case 3:
         return ProfileScreen(onMyItems: _handleMyItems);
       default:
