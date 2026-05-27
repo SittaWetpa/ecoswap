@@ -121,7 +121,9 @@ class _MainShellState extends State<MainShell> {
       case 0:
         return const DiscoverTab();
       case 1:
-        return const MatchListScreen();
+        return MatchListScreen(
+          onGoToDiscover: () => setState(() => _selectedIndex = 0),
+        );
       case 2:
         return const ImpactDashboardScreen();
       case 3:
