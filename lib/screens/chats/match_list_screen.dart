@@ -132,11 +132,18 @@ class MatchListScreen extends StatelessWidget {
   /// matchId as the route argument.
   final void Function(String matchId)? onChatTap;
 
+  /// Called when the user taps "Go to Discover" on the empty state.
+  ///
+  /// In production the shell passes a callback that switches the bottom nav
+  /// to the Discover tab (index 0). In tests it can be injected directly.
+  final VoidCallback? onGoToDiscover;
+
   const MatchListScreen({
     super.key,
     this.getCurrentUid,
     this.matchesStream,
     this.onChatTap,
+    this.onGoToDiscover,
   });
 
   CurrentUidGetter get _uidGetter => getCurrentUid ?? _defaultUidGetter;
@@ -258,7 +265,7 @@ class MatchListScreen extends StatelessWidget {
 
   Widget _buildBody(BuildContext context, String? uid) {
     if (uid == null || uid.isEmpty) {
-      return const _EmptyState();
+      return _EmptyState(onGoToDiscover: onGoToDiscover);
     }
 
     return StreamBuilder<List<MatchRowData>>(
@@ -278,7 +285,7 @@ class MatchListScreen extends StatelessWidget {
 
         final rows = snapshot.data ?? [];
         if (rows.isEmpty) {
-          return const _EmptyState();
+          return _EmptyState(onGoToDiscover: onGoToDiscover);
         }
 
         return ListView.builder(
@@ -532,7 +539,9 @@ class _AvatarCircle extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  final VoidCallback? onGoToDiscover;
+
+  const _EmptyState({this.onGoToDiscover});
 
   @override
   Widget build(BuildContext context) {
@@ -577,7 +586,7 @@ class _EmptyState extends StatelessWidget {
                 ),
                 elevation: 0,
               ),
-              onPressed: () {},
+              onPressed: onGoToDiscover,
               child: const Text(
                 'Go to Discover',
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
