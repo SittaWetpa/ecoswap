@@ -262,7 +262,7 @@ class _ItemsRow extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
-                color: _kTextTertiary,
+                color: _kGreenPrimary,
                 height: 1.3,
               ),
             ),
@@ -322,14 +322,15 @@ class _ItemThumb extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AspectRatio(
-          aspectRatio: 1,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: SizedBox(
+            height: 80,
             child: item.photoUrl.isNotEmpty
                 ? Image.network(
                     item.photoUrl,
                     fit: BoxFit.cover,
+                    width: double.infinity,
                     errorBuilder: (_, e, st) => Container(
                       color: _kSurfaceAlt,
                       alignment: Alignment.center,

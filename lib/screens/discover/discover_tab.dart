@@ -21,9 +21,12 @@ import 'package:ecoswap/models/item.dart';
 import 'package:ecoswap/models/user.dart' as app;
 import 'package:ecoswap/providers/auth_provider.dart';
 import 'package:ecoswap/screens/discover/discover_screen.dart';
+import 'package:ecoswap/screens/discover/user_detail_screen.dart';
 import 'package:ecoswap/services/feed_service.dart';
 import 'package:ecoswap/services/item_service.dart';
 import 'package:ecoswap/services/proximity_service.dart';
+import 'package:ecoswap/services/swipe_service.dart';
+import 'package:ecoswap/widgets/item_picker_modal.dart';
 import 'package:ecoswap/widgets/proximity_filter_sheet.dart';
 
 // ---------------------------------------------------------------------------
@@ -93,6 +96,7 @@ class _DiscoverTabState extends State<DiscoverTab> {
   bool _isLoading = true;
   String? _error;
   ProximityBucket _bucket = ProximityBucket.sameProvince;
+  SwipeService? _swipeService;
 
   @override
   void initState() {
@@ -130,6 +134,12 @@ class _DiscoverTabState extends State<DiscoverTab> {
         return;
       }
 
+      try {
+        _swipeService = SwipeService.fromAuth();
+      } catch (_) {
+        // Not signed in yet — swipes will be no-ops until the user signs in.
+      }
+
       // 2. Build FeedService — use override or construct a live instance.
       //    A live FeedService needs a ProximityService; load it from assets.
       final feedService =
@@ -161,6 +171,43 @@ class _DiscoverTabState extends State<DiscoverTab> {
         _isLoading = false;
       });
     }
+  }
+
+  /// Opens [UserDetailScreen] for the tapped card.
+  void _onCardTap(app.User user) {
+    final items = _itemsByUser[user.uid] ?? const [];
+    Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        builder: (ctx) => UserDetailScreen(
+          user: user,
+          items: items,
+          onRightSwipe: () {
+            Navigator.of(ctx).pop();
+            _showItemPicker(user);
+          },
+          onLeftSwipe: () {
+            Navigator.of(ctx).pop();
+            _swipeService?.recordSwipe(user.uid, 'left');
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Opens [ItemPickerModal] so the user can choose which item they want before
+  /// the right-swipe is recorded.
+  void _showItemPicker(app.User user) {
+    final svc = _swipeService;
+    if (svc == null) return;
+    final items = _itemsByUser[user.uid] ?? const [];
+    ItemPickerModal.show(
+      context,
+      targetUserName: user.displayName,
+      targetUserId: user.uid,
+      items: items,
+      swipeService: svc,
+    );
   }
 
   /// Called by [DiscoverScreen] when the user picks a new proximity filter.
@@ -212,6 +259,9 @@ class _DiscoverTabState extends State<DiscoverTab> {
       itemsByUser: _itemsByUser,
       proximityBucket: _bucket,
       onProximityChanged: _onBucketChanged,
+      onCardTap: _onCardTap,
+      onRightSwipe: (record) => _showItemPicker(record.user),
+      swipeService: _swipeService,
     );
   }
 }
