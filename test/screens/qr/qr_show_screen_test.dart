@@ -14,6 +14,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:ecoswap/screens/qr/qr_show_screen.dart';
 
@@ -85,16 +86,12 @@ void main() {
 
       await _openScreen(tester);
 
-      // Countdown pill shows 60 s.
-      // Note: find.textContaining also matches the FraudExplainer body which
-      // mentions "60s" — use findsWidgets (one or more) and verify at least
-      // one match exists.
-      expect(find.textContaining('60s'), findsWidgets);
+      // Countdown pill shows 60 s. Use exact text match so it doesn't
+      // accidentally match the FraudExplainer body ("expires in 60s").
+      expect(find.text('60s'), findsOneWidget);
 
       // QR image view is rendered (token was returned synchronously).
-      expect(find.byType(QrShowScreen), findsOneWidget);
-      // The screen is present — QrImageView renders inside _QrCard.
-      // Verify no error state is shown.
+      expect(find.byType(QrImageView), findsOneWidget);
       expect(find.textContaining("Couldn't load QR"), findsNothing);
     });
 
@@ -141,9 +138,10 @@ void main() {
 
       // After the refresh, _seconds is reset to 60 by the fetcher.
       // The timer then ticks once more to 59 during pumpAndSettle, so we
-      // accept either 59 or 60.
-      final has60 = find.textContaining('60s').evaluate().isNotEmpty;
-      final has59 = find.textContaining('59s').evaluate().isNotEmpty;
+      // accept either 59 or 60. Use exact text match to avoid the
+      // FraudExplainer body ("expires in 60s") causing a false positive.
+      final has60 = find.text('60s').evaluate().isNotEmpty;
+      final has59 = find.text('59s').evaluate().isNotEmpty;
       expect(
         has60 || has59,
         isTrue,

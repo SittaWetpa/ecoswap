@@ -92,11 +92,28 @@ class QrShowScreen extends StatefulWidget {
   /// Injectable Firestore stream replacement (for tests).
   final MatchStreamFactory? matchStream;
 
+  /// Swap partner's display name — shown in the trade summary strip and in the
+  /// instruction copy ("Show this to {partnerName}").
+  final String? partnerName;
+
+  /// Partner's photo URL for the avatar in the trade summary strip.
+  final String? partnerPhotoUrl;
+
+  /// Name of the item the current user is giving away.
+  final String? myItemName;
+
+  /// Name of the item the current user is receiving.
+  final String? theirItemName;
+
   const QrShowScreen({
     super.key,
     this.onComplete,
     this.tokenFetcher,
     this.matchStream,
+    this.partnerName,
+    this.partnerPhotoUrl,
+    this.myItemName,
+    this.theirItemName,
   });
 
   @override
@@ -269,6 +286,15 @@ class _QrShowScreenState extends State<QrShowScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // ── Trade summary strip ────────────────────────────────────────
+            if (widget.partnerName != null)
+              _TradeSummaryStrip(
+                partnerName: widget.partnerName!,
+                partnerPhotoUrl: widget.partnerPhotoUrl,
+                myItemName: widget.myItemName,
+                theirItemName: widget.theirItemName,
+              ),
+
             // ── Body ──────────────────────────────────────────────────────
             Expanded(
               child: SingleChildScrollView(
@@ -276,11 +302,23 @@ class _QrShowScreenState extends State<QrShowScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Instruction copy
-                    const Text(
-                      'Show this to your swap partner to confirm the swap.',
+                    // Instruction copy — partner name in bold when available.
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          const TextSpan(text: 'Show this to '),
+                          TextSpan(
+                            text: widget.partnerName ?? 'your swap partner',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: _kTextPrimary,
+                            ),
+                          ),
+                          const TextSpan(text: ' to confirm the swap.'),
+                        ],
+                      ),
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w400,
                         color: _kTextSecondary,
@@ -578,6 +616,156 @@ class _FraudExplainer extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// _TradeSummaryStrip — partner avatar + item names below the top bar
+// ---------------------------------------------------------------------------
+
+class _TradeSummaryStrip extends StatelessWidget {
+  final String partnerName;
+  final String? partnerPhotoUrl;
+  final String? myItemName;
+  final String? theirItemName;
+
+  const _TradeSummaryStrip({
+    required this.partnerName,
+    this.partnerPhotoUrl,
+    this.myItemName,
+    this.theirItemName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: _kBorder)),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: _kSurfaceAlt,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            _PartnerAvatar(name: partnerName, photoUrl: partnerPhotoUrl),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Swap with ${partnerName.toUpperCase()}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: _kTextSecondary,
+                      letterSpacing: 0.4,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (myItemName != null || theirItemName != null) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        if (myItemName != null)
+                          Flexible(
+                            child: Text(
+                              myItemName!,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: _kTextPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        if (myItemName != null && theirItemName != null)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 6),
+                            child: Icon(
+                              Icons.swap_horiz,
+                              size: 12,
+                              color: _kGreenPrimary,
+                            ),
+                          ),
+                        if (theirItemName != null)
+                          Flexible(
+                            child: Text(
+                              theirItemName!,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: _kTextPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// _PartnerAvatar — 32px circular avatar with initial fallback
+// ---------------------------------------------------------------------------
+
+class _PartnerAvatar extends StatelessWidget {
+  final String name;
+  final String? photoUrl;
+
+  const _PartnerAvatar({required this.name, this.photoUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = name.isNotEmpty ? name.substring(0, 1).toUpperCase() : '?';
+    if (photoUrl != null && photoUrl!.isNotEmpty) {
+      return ClipOval(
+        child: Image.network(
+          photoUrl!,
+          width: 32,
+          height: 32,
+          fit: BoxFit.cover,
+          errorBuilder: (ctx, err, st) => _buildInitial(initial),
+        ),
+      );
+    }
+    return _buildInitial(initial);
+  }
+
+  Widget _buildInitial(String initial) {
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: const BoxDecoration(
+        color: Color(0xFFE1F5EE),
+        shape: BoxShape.circle,
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF0F6E56),
+        ),
       ),
     );
   }
