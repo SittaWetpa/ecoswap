@@ -54,6 +54,7 @@ dependencies:
 
   # WBS 10.3 — calls issueQRToken callable Cloud Function.
   cloud_functions: ^5.1.0
+  mobile_scanner: ^7.2.0
 
 dev_dependencies:
   flutter_test:
