@@ -49,6 +49,12 @@ dependencies:
   shared_preferences: ^2.3.0
   appinio_swiper: ^2.1.1
 
+  # WBS 10.3 — QR Display Screen: renders JWT as a scannable QR code.
+  qr_flutter: ^4.1.0
+
+  # WBS 10.3 — calls issueQRToken callable Cloud Function.
+  cloud_functions: ^5.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
