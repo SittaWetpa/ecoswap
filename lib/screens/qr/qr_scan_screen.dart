@@ -1,4 +1,4 @@
-/// QR Scan Screen — WBS 10.4
+/// QR Scan Screen — WBS 10.4 + WBS 10.5
 ///
 /// Displays a live camera viewfinder using [mobile_scanner]. Scans QR codes
 /// continuously; when one is detected it calls the [validateQRToken] Cloud
@@ -13,15 +13,20 @@
 ///   [tokenValidator]   — replaces the [validateQRToken] callable
 ///   [permissionDenied] — when true, skips the camera and shows the
 ///                        permission-denied fallback directly (test seam only)
+///   [openSettingsCallback] — replaces the platform settings opener
+///
+/// WBS 10.5 — DEV-MODE paste-token fallback:
+///   When [kDevMode] is true (build flag `--dart-define=DEV_MODE=true`), a
+///   text field and Submit button are shown below the camera viewfinder.
+///   Pasting a JWT and tapping Submit calls [tokenValidator] exactly as a
+///   camera scan would. This path is ABSENT in release builds (kDevMode is
+///   always false when the flag is omitted or set to false).
 ///
 /// Locked decisions:
 ///   - Top bar: "Confirm exchange" title, back arrow only (hierarchical).
 ///   - No GPS, no km, no distance, no verification badge.
 ///   - Vocabulary: "swap" in UI copy, never "trade".
 ///   - Error codes defined in WBS 10.2 are translated to friendly strings here.
-///
-/// WBS 10.5 (DEV-MODE paste-token) is implemented in the same file as a
-/// separate conditional widget, NOT here — this file owns only the camera path.
 library;
 
 import 'dart:async';
@@ -29,6 +34,21 @@ import 'dart:async';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+
+// ---------------------------------------------------------------------------
+// Build flag — DEV-MODE paste-token fallback (WBS 10.5)
+//
+// Set to true at build time via: flutter run --dart-define=DEV_MODE=true
+// Defaults to false — NEVER true in release builds.
+// The CI build-apk job explicitly passes --dart-define=DEV_MODE=false.
+// ---------------------------------------------------------------------------
+
+/// When true, a paste-token text field appears below the camera viewfinder,
+/// allowing manual JWT entry without a second physical device.
+///
+/// Only ever true when the app is built with `--dart-define=DEV_MODE=true`.
+/// Omitting the flag or building with `--release` leaves this false.
+const bool kDevMode = bool.fromEnvironment('DEV_MODE');
 
 // ---------------------------------------------------------------------------
 // Design tokens — EcoSwap Style Guide
@@ -171,6 +191,16 @@ class QrScanScreen extends StatefulWidget {
   /// without needing a real platform channel.
   final VoidCallback? openSettingsCallback;
 
+  /// Test-only override for the [kDevMode] build flag.
+  ///
+  /// When non-null, this value takes precedence over [kDevMode], allowing
+  /// widget tests to exercise both the "flag on" and "flag off" branches
+  /// without recompiling with `--dart-define`. Set to `true` to show the
+  /// paste field; set to `false` to assert it is absent.
+  ///
+  /// Never pass this in production code — use the build flag instead.
+  final bool? devModeOverride;
+
   const QrScanScreen({
     super.key,
     this.scannerBuilder,
@@ -179,6 +209,7 @@ class QrScanScreen extends StatefulWidget {
     this.onComplete,
     this.partnerName,
     this.openSettingsCallback,
+    this.devModeOverride,
   });
 
   @override
@@ -196,7 +227,32 @@ class _QrScanScreenState extends State<QrScanScreen> {
   /// continuously so we gate subsequent calls until the first resolves).
   bool _isValidating = false;
 
+  // ── DEV-MODE paste-token state (WBS 10.5) ────────────────────────────────
+
+  /// Resolves the effective DEV-MODE flag.
+  ///
+  /// In production [widget.devModeOverride] is always null, so [kDevMode]
+  /// (the compile-time constant) is used. In widget tests [devModeOverride]
+  /// is set to `true` or `false` to exercise both branches without needing a
+  /// separate `--dart-define` build.
+  bool get _isDevMode => widget.devModeOverride ?? kDevMode;
+
+  /// Controller for the DEV-MODE paste-token text field.
+  ///
+  /// Lazily allocated only when the effective dev-mode flag is true.
+  TextEditingController? _pasteController;
+
   // ── Lifecycle ─────────────────────────────────────────────────────────────
+
+  @override
+  void initState() {
+    super.initState();
+    // Allocate the paste controller only when DEV-MODE is active so no
+    // resources are consumed in production builds.
+    if (_isDevMode) {
+      _pasteController = TextEditingController();
+    }
+  }
 
   @override
   void didChangeDependencies() {
@@ -205,6 +261,12 @@ class _QrScanScreenState extends State<QrScanScreen> {
       _matchId = ModalRoute.of(context)?.settings.arguments as String? ?? '';
       _initialized = true;
     }
+  }
+
+  @override
+  void dispose() {
+    _pasteController?.dispose();
+    super.dispose();
   }
 
   // ── Scan handler ──────────────────────────────────────────────────────────
@@ -325,6 +387,19 @@ class _QrScanScreenState extends State<QrScanScreen> {
                 ),
               ),
             ),
+
+            // ── DEV-MODE paste-token fallback (WBS 10.5) ─────────────────
+            //
+            // Visible ONLY when the app was built with
+            // --dart-define=DEV_MODE=true (or when devModeOverride: true is
+            // passed in tests). Never present in release builds.
+            // Matches the prototype's "Or paste code…" row below the scanner.
+            if (_isDevMode)
+              _DevModePasteField(
+                controller: _pasteController!,
+                onSubmit: _onScan,
+                isValidating: _isValidating,
+              ),
 
             // ── Loading overlay while validating ─────────────────────────
             if (_isValidating)
@@ -631,6 +706,109 @@ class _ScanLineState extends State<_ScanLine>
           ),
         );
       },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// _DevModePasteField — DEV-MODE paste-token fallback (WBS 10.5)
+//
+// Rendered ONLY when kDevMode is true (--dart-define=DEV_MODE=true).
+// Matches the prototype's "Or paste code…" row below ScannerViewfinder:
+//   [ paste input field .................. ] [ Submit ]
+//
+// Tapping Submit calls [onSubmit] with the trimmed field value, which feeds
+// directly into _QrScanScreenState._onScan — the same path as a camera scan.
+// The injectable [onSubmit] seam means widget tests never touch Firebase.
+// ---------------------------------------------------------------------------
+
+class _DevModePasteField extends StatelessWidget {
+  final TextEditingController controller;
+
+  /// Called with the trimmed token text when the user taps Submit.
+  ///
+  /// Maps to [_QrScanScreenState._onScan] in production.
+  final void Function(String token) onSubmit;
+
+  /// When true the Submit button is disabled (validate already in progress).
+  final bool isValidating;
+
+  const _DevModePasteField({
+    required this.controller,
+    required this.onSubmit,
+    required this.isValidating,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: _kSurfaceAlt,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: _kBorder),
+        ),
+        child: Row(
+          children: [
+            // Paste input — monospace, matches prototype's JetBrains Mono style.
+            Expanded(
+              child: TextField(
+                controller: controller,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontFamily: 'monospace',
+                  color: _kTextSecondary,
+                  height: 1.4,
+                ),
+                decoration: const InputDecoration(
+                  hintText: 'Or paste code…',
+                  hintStyle: TextStyle(fontSize: 13, color: _kTextSecondary),
+                  isDense: true,
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                enabled: !isValidating,
+                // Allow submitting via the keyboard action button.
+                onSubmitted: (value) {
+                  final token = value.trim();
+                  if (token.isNotEmpty) onSubmit(token);
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Submit button — green, matches prototype's style.
+            TextButton(
+              onPressed: isValidating
+                  ? null
+                  : () {
+                      final token = controller.text.trim();
+                      if (token.isNotEmpty) onSubmit(token);
+                    },
+              style: TextButton.styleFrom(
+                backgroundColor: _kGreenPrimary,
+                foregroundColor: _kSurface,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                disabledBackgroundColor: _kGreenPrimary,
+                disabledForegroundColor: _kSurface,
+              ),
+              child: const Text(
+                'Submit',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

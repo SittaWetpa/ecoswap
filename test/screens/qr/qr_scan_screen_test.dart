@@ -318,4 +318,134 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
     });
   });
+
+  // ── WBS 10.5 — DEV-MODE paste-token fallback ────────────────────────────
+
+  group('DEV-MODE paste-token fallback (WBS 10.5)', () {
+    // ── Test: flag ON → paste field is visible ─────────────────────────────
+    //
+    // When devModeOverride: true, the "Or paste code…" input and the "Submit"
+    // button must be present in the widget tree.
+
+    testWidgets('paste field visible when devModeOverride is true', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          QrScanScreen(
+            devModeOverride: true,
+            scannerBuilder: _fakeScannerBuilder('tok'),
+            tokenValidator: (_, tok) async => {'success': true, 'tradeId': 't'},
+            onComplete: (_) {},
+          ),
+        ),
+      );
+
+      await _openScreen(tester);
+
+      // The paste input hint text must be visible.
+      expect(
+        find.widgetWithText(TextField, 'Or paste code…'),
+        findsOneWidget,
+        reason: 'Paste field should appear when DEV-MODE is enabled',
+      );
+      // The Submit button must be present.
+      expect(
+        find.text('Submit'),
+        findsOneWidget,
+        reason: 'Submit button should appear when DEV-MODE is enabled',
+      );
+    });
+
+    // ── Test: flag OFF → paste field is NOT visible ────────────────────────
+    //
+    // When devModeOverride: false, neither the paste input nor the Submit
+    // button must appear — the DEV-MODE widget is fully absent.
+
+    testWidgets('paste field absent when devModeOverride is false', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          QrScanScreen(
+            devModeOverride: false,
+            scannerBuilder: _fakeScannerBuilder('tok'),
+            tokenValidator: (_, tok) async => {'success': true, 'tradeId': 't'},
+            onComplete: (_) {},
+          ),
+        ),
+      );
+
+      await _openScreen(tester);
+
+      // Neither the paste hint nor the Submit button should be present.
+      expect(
+        find.widgetWithText(TextField, 'Or paste code…'),
+        findsNothing,
+        reason: 'Paste field must be absent when DEV-MODE is disabled',
+      );
+      expect(
+        find.text('Submit'),
+        findsNothing,
+        reason: 'Submit button must be absent when DEV-MODE is disabled',
+      );
+    });
+
+    // ── Test: paste + submit → calls tokenValidator ────────────────────────
+    //
+    // When DEV-MODE is on, typing a token and tapping Submit must call
+    // [tokenValidator] with the pasted value, exactly as a camera scan would.
+
+    testWidgets('pasting a token and tapping Submit calls tokenValidator', (
+      tester,
+    ) async {
+      const pastedToken = 'header.payload.sig';
+      const fakeTradeId = 'trade-dev-001';
+
+      String? capturedToken;
+      String? receivedTradeId;
+
+      Future<Map<String, dynamic>> fakeValidator(String matchId, String token) {
+        capturedToken = token;
+        return Future.value({'success': true, 'tradeId': fakeTradeId});
+      }
+
+      await tester.pumpWidget(
+        _wrap(
+          QrScanScreen(
+            devModeOverride: true,
+            scannerBuilder: _fakeScannerBuilder('camera-tok'),
+            tokenValidator: fakeValidator,
+            onComplete: (tradeId) => receivedTradeId = tradeId,
+          ),
+        ),
+      );
+
+      await _openScreen(tester);
+
+      // Enter the token into the paste field.
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Or paste code…'),
+        pastedToken,
+      );
+
+      // Tap Submit.
+      await tester.tap(find.text('Submit'));
+      await tester.pump(); // start async call
+      await tester.pump(const Duration(milliseconds: 100)); // resolve future
+
+      // Validator received the pasted token.
+      expect(
+        capturedToken,
+        pastedToken,
+        reason: 'tokenValidator should be called with the pasted JWT',
+      );
+      // onComplete received the tradeId.
+      expect(
+        receivedTradeId,
+        fakeTradeId,
+        reason: 'onComplete should fire with the tradeId on success',
+      );
+    });
+  });
 }
