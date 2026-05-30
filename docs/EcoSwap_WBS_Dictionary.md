@@ -821,6 +821,8 @@ Implement the signup screen and `AuthService.signUp()` wrapping `FirebaseAuth.in
 **Scope / Statement of Work**
 Implement the login screen and `AuthService.signIn()` wrapping `FirebaseAuth.instance.signInWithEmailAndPassword()`. Firebase Auth persists tokens automatically via `firebase_auth`; the app uses `authStateChanges()` to drive routing so a logged-in user lands on Discover after a cold start.
 
+> **Decision change (product):** the "Forgot password?" link was **removed** from the login screen. Password reset is not implemented (it was never in scope), so the link was a dead no-op that implied a feature we don't have. Do not re-add it without also implementing the reset flow.
+
 **Deliverables**
 - `signIn(email, password)` method on `AuthService`
 - `lib/screens/auth/login_screen.dart`
@@ -1053,9 +1055,12 @@ Build Profile Setup step 3: a 140-character bio editor with live character count
 **Scope / Statement of Work**
 Build the Profile screen showing the user's photo, display name, bio, district pill (Thai · English), 3-stat impact summary (swaps / CO₂ / waste, populated by 11.4), and an Edit Profile button. Edit screen reuses the components from 5.1–5.3.
 
+> **Added feature — How-It-Works tutorial:** the Profile screen hosts a "How it works" row that replays the first-run tutorial carousel. See the **How-It-Works Tutorial** note at the end of Phase 5 for the full feature description.
+
 **Deliverables**
 - `lib/screens/profile/profile_screen.dart` — view mode
 - `lib/screens/profile/edit_profile_screen.dart` — edit mode
+- "How it works" row that opens `TutorialScreen` in replay mode (see the tutorial note below)
 - Top bar shows title only (no cog, no info icon, no settings)
 
 **Acceptance**
@@ -1074,6 +1079,38 @@ Build the Profile screen showing the user's photo, display name, bio, district p
 - Widget test: view screen renders all 6 fields
 - Widget test: edit screen pre-fills correctly from a fixture user
 - Widget test: save triggers a Firestore update with the merged document
+- Widget test: "How it works" row is shown and invokes its callback
+
+---
+
+### 5.5 How-It-Works Tutorial (added feature)
+
+| Field | Detail |
+|---|---|
+| **Type** | Added feature (not in the original WBS; introduced by product request) |
+| **Owner** | M3 |
+| **Prototype Reference** | N/A — no prototype surface; styled with the Style Guide tokens, visual language echoes `splash.jsx` |
+
+**Scope / Statement of Work**
+A full-screen swipeable carousel explaining the four-step EcoSwap loop: (1) Discover & swipe, (2) Match & chat, (3) Meet & swap (QR), (4) Track your impact. Shown **once automatically** on first run (the first time an authenticated user lands on `MainShell`), and **replayable any time** from the "How it works" row on Profile (5.4). One reusable widget serves both entry points.
+
+**Deliverables**
+- `lib/screens/tutorial/tutorial_screen.dart` — `TutorialScreen({onDone, showSkip})` carousel + `hasSeenTutorial()` / `markTutorialSeen()` persistence helpers (SharedPreferences, key `has_seen_tutorial_v1`)
+- First-run trigger in `lib/screens/shell/main_shell.dart` (post-frame, gated on `tabOverrides == null` so tests are unaffected; persists the seen flag on dismiss)
+- Replay entry from `ProfileScreen.onHowItWorks` (5.4)
+
+**Acceptance**
+- First-run: carousel auto-shows once, then never again (flag persisted)
+- Replay from Profile works regardless of the flag
+- First-run shows "Skip"; replay shows a close (X); both dismiss the screen
+- Last slide's CTA reads "Get started" and dismisses
+- Copy honours locked vocabulary ("Swap"/"swipe"), no GPS/km/age/verified/activity-status language
+
+**Testing**
+- Widget test: renders first slide; "Next" advances; last slide shows "Get started" → `onDone`
+- Widget test: first-run shows Skip (→ `onDone`), no close X; replay shows close X (→ `onDone`), no Skip
+- Test: `hasSeenTutorial()`/`markTutorialSeen()` persistence round-trip
+- Widget test (5.4): Profile "How it works" row invokes its callback
 
 ---
 
@@ -1168,6 +1205,8 @@ Build the Upload Item screen with fields: photo (required, 6.1), name (required,
 **Scope / Statement of Work**
 Build the My Items screen showing all items owned by the current user, filtered by `ownerId == currentUid` and `status != 'deleted'`. Items are grouped or labelled by status: active vs traded. Tap an item to edit (6.4); long-press to delete (6.4). Top bar shows title only.
 
+> **Decision change (product):** **traded items are view-only** — they cannot be edited or deleted. A traded tile is dimmed with the "Traded" pill, exposes no edit button, and tapping it does nothing (the edit screen, which also hosts delete, is the only mutation path and is gated off). Editing/deleting a completed trade's item would corrupt the trade record. Only active items navigate to Edit Item (6.4).
+
 **Deliverables**
 - `lib/screens/items/my_items_screen.dart`
 - Firestore query: `items.where('ownerId', '==', uid).where('status', '!=', 'deleted')`
@@ -1176,7 +1215,7 @@ Build the My Items screen showing all items owned by the current user, filtered 
 **Acceptance**
 - All non-deleted items for the current user displayed
 - Active and traded visually distinguished
-- Tap navigates to Edit Item (6.4)
+- Tap on an **active** item navigates to Edit Item (6.4); traded items are view-only (no edit/delete affordance)
 - Empty state shown when user has no items
 - Top bar has only the title (no cog, no info)
 
@@ -1346,6 +1385,8 @@ ProximityBucket bucketFor(User a, User b) {
 
 **Scope / Statement of Work**
 Build the feed query that returns candidate users for the swipe deck, given the current user's selected proximity filter (7.4). Excludes self, anyone the current user has already swiped on, and anyone with zero active items. Firestore does not support efficient distance queries, so the approach is: query a reasonable candidate set (e.g., all users with at least one active item from the same province or nearby provinces), then filter client-side by proximity bucket.
+
+> **Decision (product) — re-discovery after a completed trade (#3):** the swipe-exclusion is keyed on the `/swipes/` doc, so a person is hidden only while a swipe record for them exists. After a **completed trade** between two users, WBS 8.5 (`onItemTraded`) sweeps both mutual swipe docs (their `desiredItemId` is exactly the traded item), which makes each user eligible to rediscover the other — gated, as always, by the counterparty still having ≥ 1 active item. Re-discovery does **not** happen after a mere left-swipe (pass) or right-swipe with no trade: those swipe records persist, so a pass keeps meaning "don't show me this person." This is the intended behaviour, not a bug — do not "fix" re-appearance of a past trade partner.
 
 **Deliverables**
 - `lib/services/feed_service.dart` with `candidatesForUser(currentUser, ProximityBucket maxBucket)` returning a `List<User>`
@@ -1862,15 +1903,19 @@ export const onItemTraded = onDocumentUpdated(
 **Scope / Statement of Work**
 Build the Chats screen listing all matches involving the current user. Query: `matches.where('participants', 'array-contains', uid).where('status', 'in', ['active', 'completed'])`. Each row shows the other user's photo and name, the most recent message preview, a relative timestamp, and a small "trade pill" summarising what's being swapped (e.g., "Your jacket ⇄ their kettle"). Cancelled matches are excluded.
 
+> **Decision change (product) — completed-swap chat handling:** after a swap completes (QR redeemed, `match.status == 'completed'`) the chat is **kept**, not deleted. It is the durable trade record and the post-swap coordination channel. Completed rows carry a small "Swapped" chip in the list and the chat shows a "Swap completed" banner with the Exchange CTA replaced by a static "Swapped" indicator (see 9.2). Deleting the chat was explicitly rejected (it would destroy history and contradict the Swap Confirmed screen's "check Chats for the trade record" copy).
+
 **Deliverables**
 - `lib/screens/chats/match_list_screen.dart`
 - Match row widget with photo, name, last message, timestamp, trade pill
+- "Swapped" chip on completed-match rows (`MatchRowData.isCompleted`, derived from `match.status`)
 - Cancelled matches excluded from the list
 - Empty state when user has no matches
 
 **Acceptance**
 - All active and completed matches shown
 - Cancelled matches NOT shown
+- Completed matches show a "Swapped" chip; active matches do not
 - Trade pill correctly summarises the two items being exchanged
 - Tap on a row navigates to the chat (9.2)
 - Empty state when no matches
@@ -1900,31 +1945,34 @@ Build the Chats screen listing all matches involving the current user. Query: `m
 | **Prototype Reference** | `prototype/src/screens/chat.jsx` — `ChatScreen` header with agreed-trade pill and Ready button (owns); `Bubble` component (owns) |
 
 **Scope / Statement of Work**
-Build the chat screen with message bubbles (sender on right, recipient on left), a multi-line text input with a send button, and a sticky header showing the match's trade summary. Includes a "Ready to swap" CTA pinned at the top once both parties have exchanged at least 3 messages each (cheap engagement gate).
+Build the chat screen with message bubbles (sender on right, recipient on left), a multi-line text input with a send button, and a sticky header showing the match's trade summary. Includes a "Ready to swap" CTA pinned at the top of the chat.
+
+> **Decision change (product):** the original "both parties ≥ 3 messages each" engagement gate on the CTA was **removed**. The exchange is an in-person action — the two people have to meet in real life to scan each other's QR — so gating the button behind chat volume only adds friction. The CTA is now shown unconditionally.
+
+> **Decision change (product) — completed state:** once the match's `status` is `'completed'` the chat is kept but visibly marked done: a "Swap completed — this trade is done." banner sits below the header, and the Exchange CTA is replaced by a static "Swapped" indicator (re-scanning a completed match would fail server validation anyway — single-use token, match no longer `'active'`). Driven by the injectable `isCompleted` flag. See 9.1 for the list-row chip.
 
 **Deliverables**
 - `lib/screens/chats/chat_screen.dart`
 - Message bubble widget
 - Text input with send button
-- "Ready to swap" CTA visible when `myMessageCount >= 3 && theirMessageCount >= 3`
+- "Ready to swap" CTA always visible
 
 **Acceptance**
 - Messages render as bubbles, correctly aligned
 - Long messages wrap and don't overflow
 - Send button disabled when input is empty
-- "Ready to swap" CTA visible only when both parties have ≥ 3 messages each
+- "Ready to swap" CTA always visible (no message-count gate)
 
 **Associated Activities**
 - Build chat screen layout
 - Build message bubble widget
 - Wire text input and send button
-- Implement message-count gate for the CTA
 
 **Testing**
 - Widget test: own messages right-aligned, other's messages left-aligned
 - Widget test: send button disabled on empty input
-- Widget test: "Ready to swap" hidden when total messages = 5 unevenly distributed
-- Widget test: "Ready to swap" shown when both sides have 3+
+- Widget test: "Exchange" CTA visible with zero messages
+- Widget test: "Exchange" CTA visible with unevenly distributed messages
 
 ---
 
@@ -2261,18 +2309,20 @@ export const validateQRToken = onCall(
 | **Prototype Reference** | `prototype/src/screens/qr.jsx` — `QRScreen` with `stage='show'` (owns); `QRPattern` + `Countdown` + `FraudExplainer` components (owns) |
 
 **Scope / Statement of Work**
-Build the QR Show screen which calls 10.1 to fetch a fresh JWT, renders it as a QR code using `qr_flutter`, displays a 60-second countdown, and silently refreshes the token every 30 seconds. On refresh, the countdown visually resets to 60. Includes a "Cancel" button to back out of the flow. On successful trade (detected via Firestore listener seeing match `status: 'completed'`), navigates to the Swap Confirmed screen.
+Build the QR Show screen which calls 10.1 to fetch a fresh JWT, renders it as a QR code using `qr_flutter`, displays a countdown, and silently refreshes the token every 30 seconds. Includes a "Cancel" button to back out of the flow. On successful trade (detected via Firestore listener seeing match `status: 'completed'`), navigates to the Swap Confirmed screen.
+
+> **Decision change (UX):** the countdown now tracks the **30-second refresh cycle** ("New code in 30…0s"), counting to zero exactly as the QR rotates, then resetting to 30. The original spec showed a *60-second* countdown that reset to 60 every 30s — which never reached zero and read as a contradiction ("expires in 60s" but the code visibly changes at 30s). Each token is still valid for 60s server-side; the 30s refresh keeps a safety margin against clock skew / scan latency. The live counter now reflects the *visible rotation*, not the raw expiry; the 60s validity stays stated in the fraud-explainer security note.
 
 **Deliverables**
 - `lib/screens/qr/qr_show_screen.dart`
 - `qr_flutter` package added to `pubspec.yaml`
-- Countdown timer that resets to 60 on refresh (every 30s)
+- "New code in" countdown that counts the 30s refresh cycle and resets on each fresh token
 - Firestore listener on match status to detect completion
 - Cancel button
 
 **Acceptance**
 - QR renders within 1 second of screen open
-- Countdown shows 60, 59, 58... and visually resets to 60 every 30s (in sync with token refresh)
+- Countdown shows 30, 29, 28… and resets to 30 every 30s, in sync with the token refresh (it reaches zero exactly as the QR rotates)
 - On match completion (status flips to `completed`), navigates to Swap Confirmed
 - Cancel returns to chat screen
 
@@ -2280,12 +2330,12 @@ Build the QR Show screen which calls 10.1 to fetch a fresh JWT, renders it as a 
 - Add `qr_flutter` to `pubspec.yaml`
 - Call `issueQRToken` Cloud Function on screen mount and every 30s
 - Render QR with the returned token
-- Drive countdown from system clock against `expiresAt`
+- Drive the countdown from the 30s refresh cycle
 - Listen on `/matches/{matchId}` for completion
 
 **Testing**
-- Widget test: screen mounts, QR appears, countdown starts at 60
-- Widget test: at 30s elapsed, countdown resets to 60 (next token fetched)
+- Widget test: screen mounts, QR appears, countdown starts at 30
+- Widget test: at 30s elapsed, countdown resets to 30 (next token fetched)
 - Widget test: match status flips to `completed` → navigates to Swap Confirmed
 - Widget test: tapping Cancel returns to chat
 

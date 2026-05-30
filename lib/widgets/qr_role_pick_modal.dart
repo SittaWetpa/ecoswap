@@ -31,6 +31,11 @@ const kQRShowRoute = '/qr/show';
 /// Named route for the QR Scan screen (WBS 10.4).
 const kQRScanRoute = '/qr/scan';
 
+/// Named route for the Swap Confirmed screen (WBS 10.6). The route argument is
+/// a **tradeId** (String) — the scanner has it from `validateQRToken`; the
+/// displayer resolves it from its matchId before navigating.
+const kQRConfirmedRoute = '/qr/confirmed';
+
 // ---------------------------------------------------------------------------
 // QrRolePickModal
 // ---------------------------------------------------------------------------

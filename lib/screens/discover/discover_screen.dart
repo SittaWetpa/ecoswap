@@ -17,6 +17,7 @@ library;
 import 'package:appinio_swiper/appinio_swiper.dart';
 import 'package:flutter/material.dart';
 
+import 'package:ecoswap/models/incoming_interest.dart';
 import 'package:ecoswap/models/item.dart';
 import 'package:ecoswap/models/user.dart';
 import 'package:ecoswap/services/swipe_service.dart';
@@ -75,11 +76,17 @@ class SwipeCard extends StatelessWidget {
   /// Called when the user taps the card without swiping.
   final VoidCallback? onTap;
 
+  /// F18 — when this candidate has already swiped right on the current user,
+  /// the card shows a green "Wants your {item}" badge. Null = no incoming
+  /// interest (the card renders normally).
+  final IncomingInterest? incomingInterest;
+
   const SwipeCard({
     super.key,
     required this.user,
     required this.items,
     this.onTap,
+    this.incomingInterest,
   });
 
   @override
@@ -107,7 +114,13 @@ class SwipeCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(flex: 52, child: _PhotoSection(user: user)),
+            Expanded(
+              flex: 52,
+              child: _PhotoSection(
+                user: user,
+                incomingInterest: incomingInterest,
+              ),
+            ),
             Expanded(
               flex: 48,
               child: _InfoSection(user: user, items: items),
@@ -126,10 +139,16 @@ class SwipeCard extends StatelessWidget {
 class _PhotoSection extends StatelessWidget {
   final User user;
 
-  const _PhotoSection({required this.user});
+  /// F18 — non-null when this candidate has already swiped right on the
+  /// current user. Flips the district pill to the top-left and shows the
+  /// "Wants your {item}" badge top-right (matching the prototype).
+  final IncomingInterest? incomingInterest;
+
+  const _PhotoSection({required this.user, this.incomingInterest});
 
   @override
   Widget build(BuildContext context) {
+    final interest = incomingInterest;
     return Stack(
       children: [
         // Photo / placeholder
@@ -147,13 +166,78 @@ class _PhotoSection extends StatelessWidget {
           ),
         ),
 
-        // District pill — top-right, bucket-based, no km
+        // District pill. When there's incoming interest the pill moves to the
+        // top-left so the interest badge can own the top-right (prototype).
         Positioned(
           top: 12,
-          right: 12,
+          left: interest != null ? 12 : null,
+          right: interest != null ? null : 12,
           child: _DistrictPill(homeDistrict: user.homeDistrict),
         ),
+
+        // F18 — "Wants your {item}" badge, top-right.
+        if (interest != null)
+          Positioned(
+            top: 12,
+            right: 12,
+            child: _InterestBadge(itemName: interest.itemName),
+          ),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Incoming-interest badge — F18 "Wants your {item}"
+// ---------------------------------------------------------------------------
+
+/// Green badge shown on a candidate's card when they have already swiped right
+/// on the current user. Mirrors the prototype's interest highlight
+/// (`discover.jsx` lines 56–69).
+class _InterestBadge extends StatelessWidget {
+  final String itemName;
+
+  const _InterestBadge({required this.itemName});
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 200),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: _kGreenPrimary,
+          borderRadius: BorderRadius.circular(9999),
+          boxShadow: const [
+            BoxShadow(
+              // 0 2px 6px rgba(15,110,86,0.35)
+              color: Color(0x590F6E56),
+              blurRadius: 6,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.favorite, size: 14, color: Colors.white),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                'Wants your $itemName',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  height: 1.3,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -483,6 +567,11 @@ class DiscoverScreen extends StatefulWidget {
   /// Items keyed by [User.uid]. Only active items should be included.
   final Map<String, List<Item>> itemsByUser;
 
+  /// F18 — incoming interest keyed by candidate [User.uid]. A candidate present
+  /// in this map has already swiped right on the current user; their card shows
+  /// a "Wants your {item}" badge. Defaults to empty (no incoming interest).
+  final Map<String, IncomingInterest> interestMap;
+
   /// Currently selected proximity bucket.
   final ProximityBucket proximityBucket;
 
@@ -515,6 +604,7 @@ class DiscoverScreen extends StatefulWidget {
     super.key,
     required this.candidates,
     required this.itemsByUser,
+    this.interestMap = const {},
     this.proximityBucket = ProximityBucket.sameProvince,
     this.onProximityChanged,
     this.onRightSwipe,
@@ -713,6 +803,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                         key: ValueKey(user.uid),
                         user: user,
                         items: items,
+                        incomingInterest: widget.interestMap[user.uid],
                         onTap: () => widget.onCardTap?.call(user),
                       ),
                       if (index == 0) _SwipeOverlay(dx: _dragDx),

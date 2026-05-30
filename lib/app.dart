@@ -6,8 +6,10 @@ import 'screens/auth/login_screen.dart';
 import 'screens/profile_setup/setup_flow.dart';
 import 'screens/qr/qr_scan_screen.dart';
 import 'screens/qr/qr_show_screen.dart';
-import 'screens/shell/main_shell.dart';
-import 'widgets/qr_role_pick_modal.dart' show kQRShowRoute, kQRScanRoute;
+import 'screens/qr/swap_confirmed_screen.dart';
+import 'screens/shell/main_shell.dart' show MainShell, shellTabRequest;
+import 'widgets/qr_role_pick_modal.dart'
+    show kQRShowRoute, kQRScanRoute, kQRConfirmedRoute;
 
 // Design token
 const _kGreenPrimary = Color(0xFF1D9E75);
@@ -53,6 +55,25 @@ class EcoSwapApp extends StatelessWidget {
       // WBS 9.6 — QR exchange navigation targets (stubs until WBS 10.3/10.4).
       kQRShowRoute: (_) => const QrShowScreen(),
       kQRScanRoute: (_) => const QrScanScreen(),
+      // WBS 10.6 — Swap Confirmed. Route argument is a tradeId (String); both
+      // CTAs pop back to the shell (the QR flow sits on top of it).
+      kQRConfirmedRoute: (context) {
+        final tradeId = ModalRoute.of(context)?.settings.arguments as String?;
+        return SwapConfirmedScreen(
+          tradeId: tradeId,
+          // Pop the QR flow off the shell, then ask the shell to switch tabs:
+          // "See my impact" → Impact (2), "Back to chats" → Chats (1). Popping
+          // alone left the user on whatever tab they launched the swap from.
+          onSeeImpact: () {
+            Navigator.of(context).popUntil((r) => r.isFirst);
+            shellTabRequest.value = 2;
+          },
+          onBackToChats: () {
+            Navigator.of(context).popUntil((r) => r.isFirst);
+            shellTabRequest.value = 1;
+          },
+        );
+      },
     };
 
     // When a raw stream is injected (legacy test path), skip the real

@@ -2,9 +2,13 @@
 ///
 /// Calls the `issueQRToken` Cloud Function on mount and silently refreshes
 /// every 30 seconds. Renders the returned JWT as a QR code using `qr_flutter`.
-/// Shows a 60-second countdown that resets to 60 on each refresh. Listens to
-/// `/matches/{matchId}` for `status: 'completed'` and navigates to the Swap
-/// Confirmed screen when it fires. Cancel returns to the previous screen (chat).
+/// Shows a "New code in {30→0}s" countdown that tracks the refresh cycle: it
+/// hits zero exactly as the QR rotates, then resets to 30. (Each token is
+/// valid for 60s server-side — the 30s refresh keeps a comfortable margin —
+/// but the live counter reflects the *visible* rotation, not the raw expiry,
+/// so it never contradicts itself.) Listens to `/matches/{matchId}` for
+/// `status: 'completed'` and navigates to the Swap Confirmed screen when it
+/// fires. Cancel returns to the previous screen (chat).
 ///
 /// Injectable seams (for widget tests):
 ///   [tokenFetcher]    — replaces the Cloud Function call
@@ -24,6 +28,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+
+import '../../widgets/qr_role_pick_modal.dart' show kQRConfirmedRoute;
 
 // ---------------------------------------------------------------------------
 // Design tokens — EcoSwap Style Guide
@@ -48,6 +54,13 @@ typedef TokenFetcher = Future<Map<String, dynamic>> Function(String matchId);
 /// A stream of match status strings (e.g., 'active', 'completed').
 typedef MatchStreamFactory = Stream<String?> Function(String matchId);
 
+/// Resolves the `/trades/{tradeId}` document id for a completed [matchId].
+///
+/// The displayer detects completion via the match-status listener and never
+/// receives a tradeId directly, so it looks the trade up by matchId. Returns
+/// null when no trade is found.
+typedef TradeIdResolver = Future<String?> Function(String matchId);
+
 // ---------------------------------------------------------------------------
 // Production implementations
 // ---------------------------------------------------------------------------
@@ -69,6 +82,16 @@ Stream<String?> _defaultMatchStream(String matchId) {
       .map((snap) => snap.data()?['status'] as String?);
 }
 
+Future<String?> _defaultTradeIdResolver(String matchId) async {
+  final snap = await FirebaseFirestore.instance
+      .collection('trades')
+      .where('matchId', isEqualTo: matchId)
+      .limit(1)
+      .get();
+  if (snap.docs.isEmpty) return null;
+  return snap.docs.first.id;
+}
+
 // ---------------------------------------------------------------------------
 // QrShowScreen
 // ---------------------------------------------------------------------------
@@ -81,16 +104,23 @@ Stream<String?> _defaultMatchStream(String matchId) {
 /// In tests, inject [tokenFetcher], [matchStream], and [onComplete] so the
 /// screen never touches Firebase.
 class QrShowScreen extends StatefulWidget {
-  /// Called when the match completes (status → 'completed').
+  /// Called when the match completes (status → 'completed'), with the resolved
+  /// tradeId (null if it couldn't be looked up).
   ///
-  /// When null, navigates to '/qr/confirmed' with [matchId] as the argument.
-  final VoidCallback? onComplete;
+  /// When null, navigates to [kQRConfirmedRoute] with the tradeId as the
+  /// argument. Injected in tests to assert the resolved tradeId without
+  /// driving a real route transition.
+  final void Function(String? tradeId)? onComplete;
 
   /// Injectable Cloud Function replacement (for tests).
   final TokenFetcher? tokenFetcher;
 
   /// Injectable Firestore stream replacement (for tests).
   final MatchStreamFactory? matchStream;
+
+  /// Injectable trade-id resolver (for tests). Defaults to a Firestore query
+  /// on `/trades` by matchId.
+  final TradeIdResolver? tradeIdResolver;
 
   /// Swap partner's display name — shown in the trade summary strip and in the
   /// instruction copy ("Show this to {partnerName}").
@@ -110,6 +140,7 @@ class QrShowScreen extends StatefulWidget {
     this.onComplete,
     this.tokenFetcher,
     this.matchStream,
+    this.tradeIdResolver,
     this.partnerName,
     this.partnerPhotoUrl,
     this.myItemName,
@@ -130,7 +161,11 @@ class _QrShowScreenState extends State<QrShowScreen>
   bool _tokenError = false;
 
   // ── Countdown ─────────────────────────────────────────────────────────────
-  int _seconds = 60; // counts from 60 down to 0 then resets
+  // Tracks the 30s refresh cycle, not the 60s token expiry: counts 30 → 0 and
+  // resets to 30 each time a fresh token is fetched, so the number hitting zero
+  // lines up with the QR visibly rotating.
+  static const int _refreshSeconds = 30;
+  int _seconds = _refreshSeconds;
   Timer? _countdownTimer;
 
   // ── Refresh cycle ─────────────────────────────────────────────────────────
@@ -175,7 +210,9 @@ class _QrShowScreenState extends State<QrShowScreen>
   void _startSession() {
     _fetchToken(); // initial fetch
     // Refresh every 30 s
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: _refreshSeconds), (
+      _,
+    ) {
       _fetchToken();
     });
     _startCountdown();
@@ -191,8 +228,8 @@ class _QrShowScreenState extends State<QrShowScreen>
       setState(() {
         _token = result['token'] as String?;
         _tokenError = _token == null || _token!.isEmpty;
-        // Reset countdown to 60 on each successful refresh.
-        _seconds = 60;
+        // Reset countdown to the full refresh interval on each fresh token.
+        _seconds = _refreshSeconds;
       });
     } catch (_) {
       if (!mounted) return;
@@ -208,7 +245,7 @@ class _QrShowScreenState extends State<QrShowScreen>
         if (_seconds > 0) {
           _seconds--;
         }
-        // Token refresh will reset _seconds to 60 every 30s.
+        // The 30s refresh resets _seconds back to 30 on each fresh token.
       });
     });
   }
@@ -223,13 +260,26 @@ class _QrShowScreenState extends State<QrShowScreen>
     });
   }
 
-  void _onMatchCompleted() {
+  Future<void> _onMatchCompleted() async {
+    // The displayer only learns of completion via the match-status listener and
+    // never receives a tradeId, so resolve it from the matchId. The trade write
+    // and the status flip happen in the same transaction (WBS 10.2), so the
+    // trade doc exists by the time we get here. A null result falls through to
+    // the Swap Confirmed screen's graceful error state.
+    final resolver = widget.tradeIdResolver ?? _defaultTradeIdResolver;
+    String? tradeId;
+    try {
+      tradeId = await resolver(_matchId);
+    } catch (_) {
+      tradeId = null;
+    }
+    if (!mounted) return;
     if (widget.onComplete != null) {
-      widget.onComplete!();
+      widget.onComplete!(tradeId);
     } else {
       Navigator.of(
         context,
-      ).pushReplacementNamed('/qr/confirmed', arguments: _matchId);
+      ).pushReplacementNamed(kQRConfirmedRoute, arguments: tradeId);
     }
   }
 
@@ -257,7 +307,9 @@ class _QrShowScreenState extends State<QrShowScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isDanger = _seconds < 30;
+    // Pulse for the bottom half of the refresh cycle as a "rotating soon" cue
+    // (mirrors the prototype, which pulses the bottom half of its loop).
+    final isDanger = _seconds < _refreshSeconds ~/ 2;
     _managePulse(isDanger);
 
     return Scaffold(
@@ -546,10 +598,10 @@ class _Countdown extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.access_time, size: 14, color: textColor),
+          Icon(Icons.autorenew, size: 14, color: textColor),
           const SizedBox(width: 6),
           Text(
-            'Expires in ',
+            'New code in ',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,

@@ -407,4 +407,42 @@ void main() {
       expect(captured.first['direction'], equals('right'));
     });
   });
+
+  // -------------------------------------------------------------------------
+  // 6. Regression — card must not overflow on small phone viewports
+  // -------------------------------------------------------------------------
+
+  group('ItemPickCard — layout', () {
+    testWidgets(
+      'no_overflow — renders on a small phone viewport without a render overflow',
+      (tester) async {
+        final captured = <Map<String, dynamic>>[];
+        final service = _fakeSwipeService(captured: captured);
+
+        // A compact phone viewport reproduces the original
+        // "BOTTOM OVERFLOWED BY 10 PIXELS" report. The flexible photo must
+        // absorb the shortfall instead of overflowing the grid cell.
+        await tester.pumpWidget(
+          MediaQuery(
+            data: const MediaQueryData(size: Size(320, 568)),
+            child: MaterialApp(
+              home: Scaffold(
+                body: ItemPickerModal(
+                  targetUserName: 'cho',
+                  targetUserId: 'user-target',
+                  items: [_makeItem(id: 'item-1', name: 'Cow')],
+                  swipeService: service,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // A render overflow surfaces as a thrown FlutterError during layout.
+        expect(tester.takeException(), isNull);
+        expect(find.text('Cow'), findsOneWidget);
+      },
+    );
+  });
 }

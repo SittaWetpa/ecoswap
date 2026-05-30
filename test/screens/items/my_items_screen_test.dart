@@ -102,6 +102,57 @@ void main() {
       },
     );
 
+    // ── Test 1b: traded items are view-only (no edit/delete) ─────────────────
+    //
+    // A traded item must not expose the edit affordance, and tapping its tile
+    // must not invoke onEdit (which is also the only route to delete). Active
+    // items keep their edit button.
+
+    testWidgets('traded item has no edit button and is not tappable to edit', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(400, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final edited = <String>[];
+      final controller = StreamController<List<Item>>();
+
+      await tester.pumpWidget(
+        _buildScreen(
+          stream: controller.stream,
+          onEdit: (item) => edited.add(item.id),
+        ),
+      );
+
+      controller.add([
+        _fakeItem(id: 'active1', name: 'Active Book'),
+        _fakeItem(
+          id: 'traded1',
+          name: 'Traded Book',
+          status: ItemStatus.traded,
+        ),
+      ]);
+      await tester.pump();
+
+      // Exactly one edit button — for the active item only.
+      expect(find.byTooltip('Edit Active Book'), findsOneWidget);
+      expect(find.byTooltip('Edit Traded Book'), findsNothing);
+
+      // Tapping the traded tile does not open edit (view-only).
+      await tester.tap(find.text('Traded Book'));
+      await tester.pump();
+      expect(edited, isEmpty);
+
+      // Tapping the active tile still opens edit.
+      await tester.tap(find.text('Active Book'));
+      await tester.pump();
+      expect(edited, ['active1']);
+
+      await controller.close();
+    });
+
     // ── Test 2: empty stream shows empty state ────────────────────────────────
 
     testWidgets('shows empty state when stream has 0 items', (tester) async {

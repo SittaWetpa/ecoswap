@@ -17,12 +17,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:ecoswap/models/incoming_interest.dart';
 import 'package:ecoswap/models/item.dart';
 import 'package:ecoswap/models/user.dart' as app;
 import 'package:ecoswap/providers/auth_provider.dart';
 import 'package:ecoswap/screens/discover/discover_screen.dart';
 import 'package:ecoswap/screens/discover/user_detail_screen.dart';
 import 'package:ecoswap/services/feed_service.dart';
+import 'package:ecoswap/services/incoming_interest_service.dart';
 import 'package:ecoswap/services/item_service.dart';
 import 'package:ecoswap/services/proximity_service.dart';
 import 'package:ecoswap/services/swipe_service.dart';
@@ -79,11 +81,16 @@ class DiscoverTab extends StatefulWidget {
   /// When omitted the live Firebase implementation is used.
   final CurrentUserFetcher? currentUserFetcherOverride;
 
+  /// Override the [IncomingInterestService] used to build the F18 interest
+  /// map. Tests only.
+  final IncomingInterestService? interestServiceOverride;
+
   const DiscoverTab({
     super.key,
     this.feedServiceOverride,
     this.itemServiceOverride,
     this.currentUserFetcherOverride,
+    this.interestServiceOverride,
   });
 
   @override
@@ -93,6 +100,7 @@ class DiscoverTab extends StatefulWidget {
 class _DiscoverTabState extends State<DiscoverTab> {
   List<app.User> _candidates = [];
   Map<String, List<Item>> _itemsByUser = {};
+  Map<String, IncomingInterest> _interestMap = {};
   bool _isLoading = true;
   String? _error;
   ProximityBucket _bucket = ProximityBucket.sameProvince;
@@ -158,10 +166,24 @@ class _DiscoverTabState extends State<DiscoverTab> {
         }),
       );
 
+      // 4. F18 — build the incoming-interest map (candidates who already
+      //    swiped right on me, keyed by their uid → the item of mine they want).
+      //    This is a non-critical enhancement: if the query fails, the deck
+      //    still loads — it just shows no "Wants your X" badges.
+      Map<String, IncomingInterest> interestMap = const {};
+      try {
+        final interestService =
+            widget.interestServiceOverride ?? IncomingInterestService();
+        interestMap = await interestService.interestMapForUser(me.uid);
+      } catch (_) {
+        interestMap = const {};
+      }
+
       if (!mounted) return;
       setState(() {
         _candidates = candidates;
         _itemsByUser = itemsByUser;
+        _interestMap = interestMap;
         _isLoading = false;
       });
     } catch (e) {
@@ -257,6 +279,7 @@ class _DiscoverTabState extends State<DiscoverTab> {
     return DiscoverScreen(
       candidates: _candidates,
       itemsByUser: _itemsByUser,
+      interestMap: _interestMap,
       proximityBucket: _bucket,
       onProximityChanged: _onBucketChanged,
       onCardTap: _onCardTap,

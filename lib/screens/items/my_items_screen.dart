@@ -39,7 +39,9 @@ class _ItemTile extends StatelessWidget {
     final isTraded = item.status == ItemStatus.traded;
 
     Widget tile = GestureDetector(
-      onTap: () => onEdit?.call(item),
+      // Traded items are view-only — no edit, no delete. Tapping does nothing;
+      // the edit affordance (which also hosts delete) is hidden below.
+      onTap: isTraded ? null : () => onEdit?.call(item),
       child: Container(
         decoration: BoxDecoration(
           color: _kSurfaceAlt,
@@ -49,14 +51,22 @@ class _ItemTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Photo area with optional "Traded" pill overlay
-            Stack(
-              children: [
-                // Photo
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: AspectRatio(
-                    aspectRatio: 1,
+            // Photo area with optional "Traded" pill overlay.
+            //
+            // The photo fills the leftover vertical space (Expanded) rather
+            // than forcing a rigid 1:1 square. A fixed square plus the name
+            // (up to two lines) and the condition row overshot the grid cell
+            // — sized by childAspectRatio — by a few pixels whenever the name
+            // wrapped, producing the "BOTTOM OVERFLOWED" stripe. Letting the
+            // photo absorb the remainder makes the tile fit at any name length
+            // or text scale.
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Photo
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
                     child: item.photoUrl.isNotEmpty
                         ? Image.network(
                             item.photoUrl,
@@ -66,32 +76,32 @@ class _ItemTile extends StatelessWidget {
                           )
                         : Container(color: _kSurfaceAlt),
                   ),
-                ),
-                // "Traded" pill overlay — top-right of photo
-                if (isTraded)
-                  Positioned(
-                    top: 6,
-                    right: 6,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _kGreenSoft,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: const Text(
-                        'Traded',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: _kGreenDark,
+                  // "Traded" pill overlay — top-right of photo
+                  if (isTraded)
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _kGreenSoft,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: const Text(
+                          'Traded',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: _kGreenDark,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
             // Item name
             const SizedBox(height: 8),
@@ -130,22 +140,23 @@ class _ItemTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Edit icon button
-                SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: IconButton(
-                    constraints: const BoxConstraints(
-                      minWidth: 28,
-                      minHeight: 28,
+                // Edit icon button — hidden for traded items (view-only).
+                if (!isTraded)
+                  SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: IconButton(
+                      constraints: const BoxConstraints(
+                        minWidth: 28,
+                        minHeight: 28,
+                      ),
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.edit, size: 14),
+                      color: _kTextSecondary,
+                      tooltip: 'Edit ${item.name}',
+                      onPressed: () => onEdit?.call(item),
                     ),
-                    padding: EdgeInsets.zero,
-                    icon: const Icon(Icons.edit, size: 14),
-                    color: _kTextSecondary,
-                    tooltip: 'Edit ${item.name}',
-                    onPressed: () => onEdit?.call(item),
                   ),
-                ),
               ],
             ),
           ],

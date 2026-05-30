@@ -96,7 +96,9 @@ void main() {
       // The button is present on screen
       expect(find.text('Log out'), findsOneWidget);
 
-      // Tap the button
+      // Scroll it into view (the Profile screen scrolls; the logout button
+      // sits below the fold on the default test surface) and tap it.
+      await tester.ensureVisible(find.text('Log out'));
       await tester.tap(find.text('Log out'));
       await tester.pumpAndSettle();
 
@@ -111,6 +113,7 @@ void main() {
       await tester.pump(); // let StreamBuilder emit user data
 
       // Open dialog
+      await tester.ensureVisible(find.text('Log out'));
       await tester.tap(find.text('Log out'));
       await tester.pumpAndSettle();
       expect(find.text('Log out?'), findsOneWidget);
@@ -133,6 +136,7 @@ void main() {
       await tester.pump(); // let StreamBuilder emit user data
 
       // Open dialog
+      await tester.ensureVisible(find.text('Log out'));
       await tester.tap(find.text('Log out'));
       await tester.pumpAndSettle();
       expect(find.text('Log out?'), findsOneWidget);

@@ -118,7 +118,7 @@ The pipeline lives in `.github/workflows/ci.yml`. Six jobs:
 | `flutter-analyze-and-test` | Every push, every PR | `dart format`, `flutter analyze`, `flutter test` with coverage |
 | `functions-build-and-test` | Every push, every PR | ESLint, `tsc --noEmit`, `jest` with coverage |
 | `firestore-rules-test` | Every push, every PR | Rules tests against Firestore emulator |
-| `integration-test` (WBS 12.1) | PR to main + push to main | Full flow against emulator suite |
+| `integration-test` (WBS 12.1) | _Disabled_ | Removed for now — project targets Android only; the linux-desktop runner was just a stand-in. Reintroduce as an Android-emulator job when integration coverage returns. |
 | `build-apk` | PR to main + push to main | Builds debug APK as a downloadable artifact (DEV_MODE explicitly disabled in the build flag) |
 | `deploy-dev` | Push to main only | Deploys Cloud Functions + security rules to `ecoswap-dev` Firebase project |
 

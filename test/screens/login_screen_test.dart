@@ -126,13 +126,18 @@ void main() {
       expect(find.text('No account found with this email.'), findsOneWidget);
     });
 
-    testWidgets('Forgot password? link is present', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(home: LoginScreen(authService: _StubAuthService())),
-      );
+    testWidgets(
+      'Forgot password? link is NOT shown (removed — no such feature)',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(home: LoginScreen(authService: _StubAuthService())),
+        );
 
-      expect(find.text('Forgot password?'), findsOneWidget);
-    });
+        // Password reset was never implemented, so the dead link was removed
+        // (see WBS 4.2 decision change). It must not reappear.
+        expect(find.text('Forgot password?'), findsNothing);
+      },
+    );
 
     testWidgets('bottom toggle shows New here? and Create an account', (
       tester,

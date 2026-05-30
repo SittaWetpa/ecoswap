@@ -128,6 +128,54 @@ void main() {
       await tester.pump();
     });
 
+    // ── Test: optimistic message is not duplicated once the stream reflects it ─
+    //
+    // Regression: the optimistic bubble used to linger after the real Firestore
+    // message arrived via the stream, so a single send showed twice.
+
+    testWidgets(
+      'optimistic message is reconciled (not duplicated) when stream echoes it',
+      (tester) async {
+        final controller = StreamController<List<Message>>();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: ChatScreen(
+              otherDisplayName: 'Fah',
+              myItemName: 'Tote bag',
+              theirItemName: 'Electric kettle',
+              currentUserId: _kCurrentUid,
+              messageStream: controller.stream,
+              onSend: (_) async {},
+            ),
+          ),
+        );
+
+        // Send a message → optimistic bubble appears immediately.
+        await tester.enterText(find.byType(TextField), 'Round trip');
+        await tester.pump();
+        await tester.tap(find.byIcon(Icons.send));
+        await tester.pump();
+        expect(find.text('Round trip'), findsOneWidget);
+
+        // The stream now echoes the same message back from Firestore (as the
+        // current user). The optimistic copy must be dropped — exactly one
+        // bubble, not two.
+        controller.add([
+          Message(id: 'srv-1', senderId: _kCurrentUid, text: 'Round trip'),
+        ]);
+        await tester.pump();
+
+        expect(
+          find.text('Round trip'),
+          findsOneWidget,
+          reason: 'The message must render once, not duplicated',
+        );
+
+        await controller.close();
+      },
+    );
+
     testWidgets('optimistic message is removed on send error', (tester) async {
       final completer = Completer<void>();
 

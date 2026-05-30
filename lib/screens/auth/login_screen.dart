@@ -9,7 +9,6 @@ const _kBorder = Color(0xFFE5E5E0);
 const _kTextPrimary = Color(0xFF1A1A1A);
 const _kTextSecondary = Color(0xFF6B6B66);
 const _kDanger = Color(0xFFC44545);
-const _kInfo = Color(0xFF185FA5);
 
 // ---------------------------------------------------------------------------
 // EcoSwap wordmark — shown at top of auth screens
@@ -198,20 +197,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               style: const TextStyle(fontSize: 15, color: _kTextPrimary),
-            ),
-            const SizedBox(height: 6),
-            // Forgot password link (no-op — not in scope)
-            Align(
-              alignment: Alignment.centerRight,
-              child: GestureDetector(
-                onTap: () {
-                  // Not in scope for WBS 4.2
-                },
-                child: const Text(
-                  'Forgot password?',
-                  style: TextStyle(fontSize: 13, color: _kInfo),
-                ),
-              ),
             ),
             const SizedBox(height: 20),
             // Error message (visible only when _error != null)

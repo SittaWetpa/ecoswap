@@ -1,8 +1,8 @@
 /// Widget tests for QrShowScreen — WBS 10.3.
 ///
 /// Coverage (per WBS 10.3 Testing section):
-///   1. Screen mounts, QR appears, countdown starts at 60.
-///   2. At 30 s elapsed, countdown resets to 60 (next token fetched).
+///   1. Screen mounts, QR appears, countdown starts at 30 (the refresh cycle).
+///   2. At 30 s elapsed, countdown resets to 30 (next token fetched).
 ///   3. Match status flips to 'completed' → navigates to Swap Confirmed.
 ///   4. Tapping Cancel returns to previous screen.
 ///
@@ -31,7 +31,10 @@ Widget _wrap(
 }) {
   return MaterialApp(
     routes: {
-      '/qr/confirmed': (_) => const Scaffold(body: Text('Swap Confirmed')),
+      // Echo the route argument so tests can assert the tradeId that was passed.
+      '/qr/confirmed': (ctx) => Scaffold(
+        body: Text('Swap Confirmed:${ModalRoute.of(ctx)?.settings.arguments}'),
+      ),
       ...?extraRoutes,
     },
     home: Builder(
@@ -63,12 +66,13 @@ Future<void> _openScreen(WidgetTester tester) async {
 
 void main() {
   group('QrShowScreen', () {
-    // ── Test 1: QR appears, countdown starts at 60 ─────────────────────────
+    // ── Test 1: QR appears, countdown starts at 30 ─────────────────────────
     //
-    // The screen should immediately show the countdown at 60 and render the
-    // QR code once the (synchronous fake) token fetcher returns.
+    // The screen should immediately show the countdown at 30 (the refresh
+    // cycle length) and render the QR code once the (synchronous fake) token
+    // fetcher returns.
 
-    testWidgets('mounts with countdown at 60 and renders QR code', (
+    testWidgets('mounts with countdown at 30 and renders QR code', (
       tester,
     ) async {
       // Fake token fetcher — returns synchronously (via Future.value).
@@ -86,22 +90,27 @@ void main() {
 
       await _openScreen(tester);
 
-      // Countdown pill shows 60 s. Use exact text match so it doesn't
+      // Countdown pill shows 30 s. Use exact text match so it doesn't
       // accidentally match the FraudExplainer body ("expires in 60s").
-      expect(find.text('60s'), findsOneWidget);
+      expect(find.text('30s'), findsOneWidget);
 
       // QR image view is rendered (token was returned synchronously).
       expect(find.byType(QrImageView), findsOneWidget);
       expect(find.textContaining("Couldn't load QR"), findsNothing);
+
+      // Countdown is framed as a refresh cue ("New code in"), not an expiry
+      // countdown — that's what keeps it consistent with the 30s rotation.
+      expect(find.textContaining('New code in'), findsOneWidget);
+      expect(find.textContaining('Expires in'), findsNothing);
     });
 
-    // ── Test 2: at 30 s elapsed, countdown resets to 60 ───────────────────
+    // ── Test 2: at 30 s elapsed, countdown resets to 30 ───────────────────
     //
     // After the 30-second refresh timer fires, _fetchToken is called again,
-    // which resets _seconds to 60 in setState. We drive fake time with
+    // which resets _seconds to 30 in setState. We drive fake time with
     // tester.pump(Duration).
 
-    testWidgets('countdown resets to 60 when the 30-second refresh fires', (
+    testWidgets('countdown resets to 30 when the 30-second refresh fires', (
       tester,
     ) async {
       var fetchCount = 0;
@@ -136,16 +145,16 @@ void main() {
       // A second fetch should have occurred.
       expect(fetchCount, greaterThanOrEqualTo(2));
 
-      // After the refresh, _seconds is reset to 60 by the fetcher.
-      // The timer then ticks once more to 59 during pumpAndSettle, so we
-      // accept either 59 or 60. Use exact text match to avoid the
+      // After the refresh, _seconds is reset to 30 by the fetcher.
+      // The timer then ticks once more to 29 during pumpAndSettle, so we
+      // accept either 29 or 30. Use exact text match to avoid the
       // FraudExplainer body ("expires in 60s") causing a false positive.
-      final has60 = find.text('60s').evaluate().isNotEmpty;
-      final has59 = find.text('59s').evaluate().isNotEmpty;
+      final has30 = find.text('30s').evaluate().isNotEmpty;
+      final has29 = find.text('29s').evaluate().isNotEmpty;
       expect(
-        has60 || has59,
+        has30 || has29,
         isTrue,
-        reason: 'Countdown should reset to 60 (or be at 59 after one tick)',
+        reason: 'Countdown should reset to 30 (or be at 29 after one tick)',
       );
     });
 
@@ -172,7 +181,8 @@ void main() {
             QrShowScreen(
               tokenFetcher: fakeFetcher,
               matchStream: fakeStream,
-              onComplete: () => completedCalled = true,
+              tradeIdResolver: (_) async => 'trade-3',
+              onComplete: (_) => completedCalled = true,
             ),
           ),
         );
@@ -181,9 +191,64 @@ void main() {
 
         // Emit 'completed' on the match stream.
         matchController.add('completed');
-        await tester.pump();
+        await tester.pump(); // deliver event, start tradeId resolution
+        await tester.pump(); // resolver completes → onComplete fires
 
         expect(completedCalled, isTrue);
+
+        await matchController.close();
+      },
+    );
+
+    // ── Test 3b: displayer resolves tradeId from matchId, then navigates ─────
+    //
+    // Regression: the displayer used to push '/qr/confirmed' with the *matchId*
+    // (the screen expects a tradeId), and the route wasn't even registered.
+    // It must now resolve the tradeId via the injected resolver and pass that.
+
+    testWidgets(
+      'on completion the displayer resolves the tradeId from its matchId',
+      (tester) async {
+        final matchController = StreamController<String?>();
+        String? resolverArg;
+        String? capturedTradeId;
+
+        Future<Map<String, dynamic>> fakeFetcher(String matchId) async {
+          return {'token': 'fake.jwt', 'expiresAt': 9999999999};
+        }
+
+        Stream<String?> fakeStream(String matchId) => matchController.stream;
+
+        Future<String?> fakeResolver(String matchId) async {
+          resolverArg = matchId;
+          return 'trade-xyz';
+        }
+
+        await tester.pumpWidget(
+          _wrap(
+            QrShowScreen(
+              tokenFetcher: fakeFetcher,
+              matchStream: fakeStream,
+              tradeIdResolver: fakeResolver,
+              // Capture the resolved tradeId via onComplete instead of driving
+              // the real route transition (the 1s countdown timer makes the
+              // tree never settle, which hangs pumpAndSettle).
+              onComplete: (tradeId) => capturedTradeId = tradeId,
+            ),
+            matchId: 'match-77',
+          ),
+        );
+
+        await _openScreen(tester);
+
+        matchController.add('completed');
+        await tester.pump(); // deliver stream event, kick off _onMatchCompleted
+        await tester.pump(); // resolver future completes → onComplete fires
+
+        // Resolver was called with the matchId, and the resolved tradeId
+        // (not the matchId) is what flows onward to Swap Confirmed.
+        expect(resolverArg, 'match-77');
+        expect(capturedTradeId, 'trade-xyz');
 
         await matchController.close();
       },

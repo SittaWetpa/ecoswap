@@ -340,9 +340,16 @@ class ItemPickCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Square photo with optional checkmark overlay
-            _ItemPhoto(item: item, selected: selected),
-            const SizedBox(height: 12),
+            // Square photo with optional checkmark overlay.
+            // Wrapped in Expanded so the photo shrinks to whatever space is
+            // left after the name + pill, guaranteeing the card never overflows
+            // its fixed grid-cell height (was: a hard-square photo that pushed
+            // the name/pill past the cell on shorter screens — "BOTTOM
+            // OVERFLOWED BY n PIXELS").
+            Expanded(
+              child: _ItemPhoto(item: item, selected: selected),
+            ),
+            const SizedBox(height: 10),
             // Item name
             Text(
               item.name,
@@ -352,7 +359,7 @@ class ItemPickCard extends StatelessWidget {
                 color: _kTextPrimary,
                 height: 1.3,
               ),
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 4),
@@ -377,47 +384,55 @@ class _ItemPhoto extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        // Square photo / placeholder
-        AspectRatio(
-          aspectRatio: 1,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: item.photoUrl.isNotEmpty
-                ? Image.network(
-                    item.photoUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context2, err, stackTrace) =>
-                        _PhotoPlaceholder(item: item),
-                  )
-                : _PhotoPlaceholder(item: item),
-          ),
-        ),
-
-        // Selected checkmark badge — top-right corner of photo
-        if (selected)
-          Positioned(
-            top: 6,
-            right: 6,
-            child: Container(
-              width: 24,
-              height: 24,
-              decoration: const BoxDecoration(
-                color: _kGreenPrimary,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x26000000),
-                    blurRadius: 3,
-                    offset: Offset(0, 1),
-                  ),
-                ],
+    // Top-aligned square that fits the (flexible) space the parent Expanded
+    // grants it. When the cell is short the square simply scales down rather
+    // than overflowing; the name + condition pill below always have room.
+    return Align(
+      alignment: Alignment.topCenter,
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: Stack(
+          children: [
+            // Square photo / placeholder
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: item.photoUrl.isNotEmpty
+                    ? Image.network(
+                        item.photoUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context2, err, stackTrace) =>
+                            _PhotoPlaceholder(item: item),
+                      )
+                    : _PhotoPlaceholder(item: item),
               ),
-              child: const Icon(Icons.check, size: 16, color: Colors.white),
             ),
-          ),
-      ],
+
+            // Selected checkmark badge — top-right corner of photo
+            if (selected)
+              Positioned(
+                top: 6,
+                right: 6,
+                child: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: const BoxDecoration(
+                    color: _kGreenPrimary,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x26000000),
+                        blurRadius: 3,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.check, size: 16, color: Colors.white),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
