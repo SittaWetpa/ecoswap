@@ -35,6 +35,8 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../../widgets/qr_role_pick_modal.dart' show kQRConfirmedRoute;
+
 // ---------------------------------------------------------------------------
 // Build flag — DEV-MODE paste-token fallback (WBS 10.5)
 //
@@ -285,7 +287,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
       } else {
         Navigator.of(
           context,
-        ).pushReplacementNamed('/qr/confirmed', arguments: tradeId);
+        ).pushReplacementNamed(kQRConfirmedRoute, arguments: tradeId);
       }
     } on FirebaseFunctionsException catch (e) {
       if (!mounted) return;

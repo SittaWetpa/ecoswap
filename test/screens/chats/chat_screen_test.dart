@@ -26,6 +26,7 @@ Widget _buildScreen({
   Future<void> Function(String)? onSend,
   VoidCallback? onReadyExchange,
   VoidCallback? onBack,
+  bool isCompleted = false,
 }) {
   return MaterialApp(
     home: ChatScreen(
@@ -37,6 +38,7 @@ Widget _buildScreen({
       onSend: onSend,
       onReadyExchange: onReadyExchange,
       onBack: onBack,
+      isCompleted: isCompleted,
     ),
   );
 }
@@ -176,103 +178,96 @@ void main() {
       );
     });
 
-    // ── Test 3: "Ready to swap" hidden when unevenly distributed ─────────────
+    // ── Test 3: "Exchange" CTA is always visible (no message-count gate) ─────
+    //
+    // Product decision (WBS 9.2 / 9.6): the exchange is an in-person action, so
+    // the button is shown unconditionally — there is no chat-volume gate.
 
-    testWidgets(
-      '"Ready to swap" hidden when messages = 5 unevenly distributed (4 mine, 1 theirs)',
-      (tester) async {
-        // 4 messages from me, 1 from them → gate not met (need ≥ 3 each side)
-        final messages = [
-          _msg(_kCurrentUid, 'Msg 1', index: 0),
-          _msg(_kCurrentUid, 'Msg 2', index: 1),
-          _msg(_kCurrentUid, 'Msg 3', index: 2),
-          _msg(_kCurrentUid, 'Msg 4', index: 3),
-          _msg(_kOtherUid, 'Their only message', index: 4),
-        ];
-
-        await tester.pumpWidget(_buildScreen(messages: messages));
-
-        // The CTA text "Exchange" should NOT appear.
-        expect(
-          find.text('Exchange'),
-          findsNothing,
-          reason:
-              '"Exchange" button must be hidden when the other party has < 3 messages',
-        );
-      },
-    );
-
-    testWidgets('"Ready to swap" hidden when 3 mine + 2 theirs (theirs < 3)', (
+    testWidgets('"Exchange" button is shown even with zero messages', (
       tester,
     ) async {
+      await tester.pumpWidget(_buildScreen());
+
+      expect(
+        find.text('Exchange'),
+        findsOneWidget,
+        reason: '"Exchange" button must be visible on an empty chat',
+      );
+    });
+
+    testWidgets('"Exchange" button is shown with unevenly distributed messages', (
+      tester,
+    ) async {
+      // 4 mine, 1 theirs — would have failed the old ≥3-each gate.
       final messages = [
         _msg(_kCurrentUid, 'Msg 1', index: 0),
         _msg(_kCurrentUid, 'Msg 2', index: 1),
         _msg(_kCurrentUid, 'Msg 3', index: 2),
-        _msg(_kOtherUid, 'Their 1', index: 3),
-        _msg(_kOtherUid, 'Their 2', index: 4),
+        _msg(_kCurrentUid, 'Msg 4', index: 3),
+        _msg(_kOtherUid, 'Their only message', index: 4),
       ];
 
       await tester.pumpWidget(_buildScreen(messages: messages));
 
       expect(
         find.text('Exchange'),
-        findsNothing,
-        reason:
-            '"Exchange" button must be hidden when other party has only 2 messages',
+        findsOneWidget,
+        reason: '"Exchange" button must not be gated by message counts',
       );
     });
 
-    // ── Test 4: "Ready to swap" shown when both sides have ≥ 3 messages ──────
+    // ── Test 4: tapping "Exchange" invokes onReadyExchange ───────────────────
+
+    testWidgets('tapping "Exchange" invokes onReadyExchange', (tester) async {
+      var tapped = false;
+
+      await tester.pumpWidget(
+        _buildScreen(onReadyExchange: () => tapped = true),
+      );
+
+      await tester.tap(find.text('Exchange'));
+      await tester.pump();
+
+      expect(
+        tapped,
+        isTrue,
+        reason: 'Tapping the Exchange CTA must trigger onReadyExchange',
+      );
+    });
+
+    // ── Test 5: completed swap keeps the chat but marks it done (decision #4) ─
 
     testWidgets(
-      '"Ready to swap" shown when both sides have exactly 3 messages',
+      'completed match shows the "Swap completed" banner and hides Exchange',
       (tester) async {
-        final messages = [
-          _msg(_kCurrentUid, 'Mine 1', index: 0),
-          _msg(_kCurrentUid, 'Mine 2', index: 1),
-          _msg(_kCurrentUid, 'Mine 3', index: 2),
-          _msg(_kOtherUid, 'Theirs 1', index: 3),
-          _msg(_kOtherUid, 'Theirs 2', index: 4),
-          _msg(_kOtherUid, 'Theirs 3', index: 5),
-        ];
-
-        await tester.pumpWidget(_buildScreen(messages: messages));
-
-        // "Exchange" button should now be visible.
-        expect(
-          find.text('Exchange'),
-          findsOneWidget,
-          reason:
-              '"Exchange" button must appear when both sides have ≥ 3 messages',
+        await tester.pumpWidget(
+          _buildScreen(
+            messages: [_msg(_kCurrentUid, 'See you at the desk', index: 0)],
+            isCompleted: true,
+          ),
         );
+
+        // The chat itself is kept — its messages still render.
+        expect(find.text('See you at the desk'), findsOneWidget);
+
+        // Completion banner is shown.
+        expect(find.text('Swap completed — this trade is done.'), findsOneWidget);
+
+        // The Exchange CTA is replaced by a static "Swapped" indicator.
+        expect(find.text('Exchange'), findsNothing);
+        expect(find.text('Swapped'), findsOneWidget);
       },
     );
 
-    testWidgets(
-      '"Ready to swap" shown when both sides have more than 3 messages',
-      (tester) async {
-        final messages = [
-          _msg(_kCurrentUid, 'Mine 1', index: 0),
-          _msg(_kCurrentUid, 'Mine 2', index: 1),
-          _msg(_kCurrentUid, 'Mine 3', index: 2),
-          _msg(_kCurrentUid, 'Mine 4', index: 3),
-          _msg(_kOtherUid, 'Theirs 1', index: 4),
-          _msg(_kOtherUid, 'Theirs 2', index: 5),
-          _msg(_kOtherUid, 'Theirs 3', index: 6),
-          _msg(_kOtherUid, 'Theirs 4', index: 7),
-        ];
+    testWidgets('active match still shows Exchange and no completed banner', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_buildScreen());
 
-        await tester.pumpWidget(_buildScreen(messages: messages));
-
-        expect(
-          find.text('Exchange'),
-          findsOneWidget,
-          reason:
-              '"Exchange" button must remain visible once the gate is cleared',
-        );
-      },
-    );
+      expect(find.text('Exchange'), findsOneWidget);
+      expect(find.text('Swapped'), findsNothing);
+      expect(find.textContaining('Swap completed'), findsNothing);
+    });
 
     // ── Additional: long messages wrap without overflow ───────────────────────
 
@@ -288,6 +283,28 @@ void main() {
       // No overflow exception should be thrown. Finding the text confirms it
       // rendered.
       expect(find.text(longText), findsOneWidget);
+    });
+
+    // ── Additional: message bubble shows the sent time ───────────────────────
+
+    testWidgets('message bubble renders an HH:mm timestamp', (tester) async {
+      // 14:05 local time — the bubble should show "14:05".
+      final messages = [
+        Message(
+          id: 'm-time',
+          senderId: _kCurrentUid,
+          text: 'Timed message',
+          sentAt: DateTime(2026, 5, 30, 14, 5),
+        ),
+      ];
+
+      await tester.pumpWidget(_buildScreen(messages: messages));
+
+      expect(
+        find.text('14:05'),
+        findsOneWidget,
+        reason: 'Each message bubble should display its sent time as HH:mm',
+      );
     });
 
     // ── Additional: trade pill displays both item names ───────────────────────

@@ -10,12 +10,31 @@ import '../../widgets/qr_role_pick_modal.dart';
 // ---------------------------------------------------------------------------
 
 const _kGreenPrimary = Color(0xFF1D9E75);
+const _kGreenDark = Color(0xFF0F6E56);
+const _kGreenSoft = Color(0xFFE1F5EE);
 const _kSurface = Color(0xFFFFFFFF);
 const _kSurfaceAlt = Color(0xFFF7F5F0);
 const _kBorder = Color(0xFFE5E5E0);
 const _kTextPrimary = Color(0xFF1A1A1A);
 const _kTextSecondary = Color(0xFF6B6B66);
 const _kTextTertiary = Color(0xFFA0A09B);
+
+// ---------------------------------------------------------------------------
+// Timestamp formatting
+// ---------------------------------------------------------------------------
+
+/// Formats a message's [sentAt] as a 24-hour `HH:mm` label for the bubble.
+///
+/// Returns '' when the timestamp is null — which is the case for a freshly
+/// written message before Firestore resolves the server `sentAt`, so no
+/// placeholder time is shown until the real value arrives.
+String _formatMessageTime(DateTime? t) {
+  if (t == null) return '';
+  final local = t.toLocal();
+  final h = local.hour.toString().padLeft(2, '0');
+  final m = local.minute.toString().padLeft(2, '0');
+  return '$h:$m';
+}
 
 // ---------------------------------------------------------------------------
 // OptimisticMessage — WBS 9.4
@@ -109,6 +128,15 @@ class ChatScreen extends StatefulWidget {
   /// [messageStream] is not provided. Optional — omit in tests.
   final String? matchId;
 
+  /// True when this match's swap has already completed (status='completed').
+  ///
+  /// The chat is kept as the durable trade record and post-swap coordination
+  /// channel — it is NOT deleted. When true the screen shows a "Swap
+  /// completed" banner and replaces the Exchange CTA with a done indicator
+  /// (re-scanning a completed match would fail server validation anyway:
+  /// the token is single-use and the match is no longer 'active').
+  final bool isCompleted;
+
   /// Injectable [ChatService]. Defaults to the production singleton.
   final ChatService? chatService;
 
@@ -143,6 +171,7 @@ class ChatScreen extends StatefulWidget {
     this.messages = const [],
     this.messageStream,
     this.matchId,
+    this.isCompleted = false,
     this.chatService,
     this.onSend,
     this.onReadyExchange,
@@ -207,9 +236,35 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _messageSubscription = stream.listen((msgs) {
       if (mounted) {
-        setState(() => _liveMessages = msgs);
+        setState(() {
+          _liveMessages = msgs;
+          _reconcileOptimistic(msgs);
+        });
         _triggerMarkRead(msgs);
       }
+    });
+  }
+
+  /// Drops optimistic messages once their real counterpart shows up in the
+  /// live stream, so a just-sent message never renders twice (once as the
+  /// local optimistic bubble, once from Firestore).
+  ///
+  /// Matches by text against the current user's messages in [liveMessages],
+  /// consuming one match per optimistic entry so two identical texts sent in
+  /// a row each reconcile against a distinct stream message.
+  void _reconcileOptimistic(List<Message> liveMessages) {
+    if (_optimisticMessages.isEmpty) return;
+    final ownTexts = <String>[
+      for (final m in liveMessages)
+        if (m.senderId == widget.currentUserId) m.text,
+    ];
+    _optimisticMessages.removeWhere((opt) {
+      final i = ownTexts.indexOf(opt.text);
+      if (i != -1) {
+        ownTexts.removeAt(i);
+        return true;
+      }
+      return false;
     });
   }
 
@@ -294,18 +349,13 @@ class _ChatScreenState extends State<ChatScreen> {
   /// the static list passed via [widget.messages].
   List<Message> get _effectiveMessages => _liveMessages ?? widget.messages;
 
-  /// Count how many messages were sent by [currentUserId].
-  int get _myMessageCount => _effectiveMessages
-      .where((m) => m.senderId == widget.currentUserId)
-      .length;
-
-  /// Count how many messages were sent by anyone else.
-  int get _theirMessageCount => _effectiveMessages
-      .where((m) => m.senderId != widget.currentUserId)
-      .length;
-
-  /// The "Ready to swap" CTA is visible only when both sides have ≥ 3 messages.
-  bool get _readyVisible => _myMessageCount >= 3 && _theirMessageCount >= 3;
+  /// The "Ready to swap" CTA is visible until the swap completes. The exchange
+  /// is an in-person action — both parties meet to scan each other's QR — so
+  /// there is no value in gating the button behind a chat-volume threshold.
+  /// (The earlier "both sides ≥ 3 messages" engagement gate was dropped by
+  /// product decision; see WBS 9.2 / 9.6.) Once the match is completed the CTA
+  /// is replaced by a "Swapped" indicator instead.
+  bool get _readyVisible => !widget.isCompleted;
 
   /// WBS 9.6 — Called when the "Exchange" CTA is tapped.
   ///
@@ -339,9 +389,11 @@ class _ChatScreenState extends State<ChatScreen> {
               myItemName: widget.myItemName,
               theirItemName: widget.theirItemName,
               showReadyCta: _readyVisible,
+              isCompleted: widget.isCompleted,
               onBack: widget.onBack ?? () => Navigator.of(context).maybePop(),
               onReadyExchange: () => _handleReadyExchange(context),
             ),
+            if (widget.isCompleted) const _CompletedBanner(),
             Expanded(
               child: _MessageList(
                 messages: _effectiveMessages,
@@ -372,6 +424,7 @@ class _Header extends StatelessWidget {
   final String myItemName;
   final String theirItemName;
   final bool showReadyCta;
+  final bool isCompleted;
   final VoidCallback onBack;
   final VoidCallback? onReadyExchange;
 
@@ -381,6 +434,7 @@ class _Header extends StatelessWidget {
     required this.myItemName,
     required this.theirItemName,
     required this.showReadyCta,
+    required this.isCompleted,
     required this.onBack,
     this.onReadyExchange,
   });
@@ -440,6 +494,7 @@ class _Header extends StatelessWidget {
               myItemName: myItemName,
               theirItemName: theirItemName,
               showReadyCta: showReadyCta,
+              isCompleted: isCompleted,
               onReadyExchange: onReadyExchange,
             ),
           ),
@@ -457,12 +512,14 @@ class _TradePill extends StatelessWidget {
   final String myItemName;
   final String theirItemName;
   final bool showReadyCta;
+  final bool isCompleted;
   final VoidCallback? onReadyExchange;
 
   const _TradePill({
     required this.myItemName,
     required this.theirItemName,
     required this.showReadyCta,
+    this.isCompleted = false,
     this.onReadyExchange,
   });
 
@@ -516,11 +573,84 @@ class _TradePill extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          // "Ready to swap" CTA — gated by message count
+          // Exchange CTA while the swap is still open; once completed it is
+          // replaced by a static "Swapped" indicator.
           if (showReadyCta) ...[
             const SizedBox(width: 8),
             _ReadyToSwapButton(onPressed: onReadyExchange),
+          ] else if (isCompleted) ...[
+            const SizedBox(width: 8),
+            const _SwappedIndicator(),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// _SwappedIndicator — replaces the Exchange CTA once the swap is completed
+// ---------------------------------------------------------------------------
+
+class _SwappedIndicator extends StatelessWidget {
+  const _SwappedIndicator();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: _kGreenSoft,
+        borderRadius: BorderRadius.circular(9999),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.check_circle, size: 12, color: _kGreenDark),
+          SizedBox(width: 4),
+          Text(
+            'Swapped',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: _kGreenDark,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// _CompletedBanner — full-width strip shown at the top of a completed chat
+// ---------------------------------------------------------------------------
+
+class _CompletedBanner extends StatelessWidget {
+  const _CompletedBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: _kGreenSoft,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.check_circle, size: 16, color: _kGreenDark),
+          SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              'Swap completed — this trade is done.',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: _kGreenDark,
+                height: 1.3,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -585,12 +715,34 @@ class _MessageList extends StatelessWidget {
       return const SizedBox.expand();
     }
 
+    // reverse: true renders item index 0 at the BOTTOM of the viewport and
+    // keeps the list anchored there, which is the standard chat layout
+    // (newest message at the bottom, visible without manual scrolling).
+    //
+    // The live [messages] arrive newest-first (the stream is ordered by
+    // sentAt descending), so index 0 == newest maps directly onto the
+    // bottom slot. Optimistic (in-flight) messages are newer still, so they
+    // occupy the lowest indices — reversed among themselves so the most
+    // recently sent sits at the very bottom.
     return ListView.builder(
+      reverse: true,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       itemCount: totalCount,
       itemBuilder: (context, index) {
-        if (index < messages.length) {
-          final msg = messages[index];
+        if (index < optimisticMessages.length) {
+          // Optimistic message — always "own" (current user sent it).
+          final opt = optimisticMessages[optimisticMessages.length - 1 - index];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: MessageBubble(
+              key: ValueKey(opt.id),
+              text: opt.text,
+              isOwn: true,
+              isSending: opt.isSending,
+            ),
+          );
+        } else {
+          final msg = messages[index - optimisticMessages.length];
           final isOwn = msg.senderId == currentUserId;
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -599,18 +751,7 @@ class _MessageList extends StatelessWidget {
               isOwn: isOwn,
               readBy: msg.readBy,
               otherUserId: otherUserId,
-            ),
-          );
-        } else {
-          // Optimistic message — always "own" (current user sent it).
-          final opt = optimisticMessages[index - messages.length];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: MessageBubble(
-              key: ValueKey(opt.id),
-              text: opt.text,
-              isOwn: true,
-              isSending: opt.isSending,
+              timeLabel: _formatMessageTime(msg.sentAt),
             ),
           );
         }
@@ -656,6 +797,10 @@ class MessageBubble extends StatelessWidget {
   /// Shows a clock icon; resolves to a checkmark once the write completes.
   final bool isSending;
 
+  /// `HH:mm` timestamp shown at the bottom of the bubble. Empty string hides
+  /// it (e.g. optimistic messages with no server timestamp yet).
+  final String timeLabel;
+
   const MessageBubble({
     super.key,
     required this.text,
@@ -663,6 +808,7 @@ class MessageBubble extends StatelessWidget {
     this.readBy = const [],
     this.otherUserId = '',
     this.isSending = false,
+    this.timeLabel = '',
   });
 
   /// Whether the read indicator should be visible on this bubble.
@@ -707,18 +853,37 @@ class MessageBubble extends StatelessWidget {
                       color: isOwn ? Colors.white : _kTextPrimary,
                     ),
                   ),
-                  // WBS 9.4 — optimistic status indicator: clock while
-                  // sending, checkmark once acknowledged.
-                  if (isOwn)
+                  // Timestamp + (own only) optimistic status indicator:
+                  // clock while sending, checkmark once acknowledged.
+                  if (isOwn || timeLabel.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
-                      child: Icon(
-                        key: isSending
-                            ? const ValueKey('sending')
-                            : const ValueKey('sent'),
-                        isSending ? Icons.access_time : Icons.check,
-                        size: 10,
-                        color: Colors.white.withValues(alpha: 0.7),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (timeLabel.isNotEmpty)
+                            Text(
+                              timeLabel,
+                              style: TextStyle(
+                                fontSize: 10,
+                                height: 1.0,
+                                color: isOwn
+                                    ? Colors.white.withValues(alpha: 0.7)
+                                    : _kTextTertiary,
+                              ),
+                            ),
+                          if (isOwn) ...[
+                            if (timeLabel.isNotEmpty) const SizedBox(width: 4),
+                            Icon(
+                              key: isSending
+                                  ? const ValueKey('sending')
+                                  : const ValueKey('sent'),
+                              isSending ? Icons.access_time : Icons.check,
+                              size: 10,
+                              color: Colors.white.withValues(alpha: 0.7),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                 ],

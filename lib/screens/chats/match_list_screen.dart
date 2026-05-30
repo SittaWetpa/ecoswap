@@ -13,6 +13,8 @@ import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/material.dart';
 
 import '../items/upload_item_screen.dart' show CurrentUidGetter;
+import '../../services/chat_service.dart';
+import 'chat_screen.dart';
 
 // ---------------------------------------------------------------------------
 // Design tokens — EcoSwap Style Guide
@@ -51,6 +53,21 @@ class MatchRowData {
   final DateTime? lastMessageTime;
   final int unreadCount;
 
+  /// UID of the signed-in user. Needed to open [ChatScreen] (message
+  /// alignment + read receipts). Defaults to '' so test fakes that don't
+  /// exercise chat navigation stay terse.
+  final String currentUserId;
+
+  /// UID of the other party in this match. Needed for [ChatScreen]
+  /// read-receipt logic. Defaults to '' for the same reason.
+  final String otherUserId;
+
+  /// True when the match's `status` is `'completed'` — i.e. the QR swap has
+  /// been redeemed. The chat is KEPT (it's the durable trade record and the
+  /// post-swap coordination channel); the UI just marks it as done rather
+  /// than deleting it. Defaults to false.
+  final bool isCompleted;
+
   const MatchRowData({
     required this.matchId,
     required this.otherUserName,
@@ -60,6 +77,9 @@ class MatchRowData {
     required this.lastMessage,
     this.lastMessageTime,
     this.unreadCount = 0,
+    this.currentUserId = '',
+    this.otherUserId = '',
+    this.isCompleted = false,
   });
 }
 
@@ -128,8 +148,8 @@ class MatchListScreen extends StatelessWidget {
 
   /// Called when the user taps a row. Receives the matchId.
   ///
-  /// When null (production), tapping pushes the '/chat' named route with the
-  /// matchId as the route argument.
+  /// When null (production), tapping opens [ChatScreen] for the tapped match
+  /// via a [MaterialPageRoute]. Tests inject this to intercept navigation.
   final void Function(String matchId)? onChatTap;
 
   /// Called when the user taps "Go to Discover" on the empty state.
@@ -138,12 +158,19 @@ class MatchListScreen extends StatelessWidget {
   /// to the Discover tab (index 0). In tests it can be injected directly.
   final VoidCallback? onGoToDiscover;
 
+  /// Builds the [ChatService] handed to [ChatScreen] when a row is opened.
+  ///
+  /// Production: leave null — a default Firestore-backed [ChatService] is
+  /// created. Tests inject a fake so opening a chat never touches Firebase.
+  final ChatService Function()? chatServiceFactory;
+
   const MatchListScreen({
     super.key,
     this.getCurrentUid,
     this.matchesStream,
     this.onChatTap,
     this.onGoToDiscover,
+    this.chatServiceFactory,
   });
 
   CurrentUidGetter get _uidGetter => getCurrentUid ?? _defaultUidGetter;
@@ -231,6 +258,9 @@ class MatchListScreen extends StatelessWidget {
       lastMessage: lastMessage,
       lastMessageTime: lastMessageTime,
       unreadCount: 0, // MVP: unread counting is handled in WBS 9.4
+      currentUserId: uid,
+      otherUserId: otherUserId,
+      isCompleted: (data['status'] as String?) == 'completed',
     );
   }
 
@@ -298,13 +328,44 @@ class MatchListScreen extends StatelessWidget {
                 if (onChatTap != null) {
                   onChatTap!(row.matchId);
                 } else {
-                  Navigator.pushNamed(context, '/chat', arguments: row.matchId);
+                  _openChat(context, row);
                 }
               },
             );
           },
         );
       },
+    );
+  }
+
+  /// Opens [ChatScreen] for [row] via a [MaterialPageRoute].
+  ///
+  /// Wires a fresh [ChatService] so the screen streams live messages
+  /// (WBS 9.3), persists sends (WBS 9.4), and writes read receipts (WBS 9.5).
+  /// The "Ready to swap" CTA falls back to [ChatScreen]'s built-in QR
+  /// role-pick modal, so no [onReadyExchange] is passed here.
+  void _openChat(BuildContext context, MatchRowData row) {
+    final chatService = (chatServiceFactory ?? ChatService.new)();
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => ChatScreen(
+          otherDisplayName: row.otherUserName,
+          otherPhotoUrl: row.otherUserPhotoUrl,
+          myItemName: row.myItemName,
+          theirItemName: row.theirItemName,
+          currentUserId: row.currentUserId,
+          otherUserId: row.otherUserId,
+          matchId: row.matchId,
+          isCompleted: row.isCompleted,
+          chatService: chatService,
+          onSend: (text) => chatService.sendMessage(row.matchId, text),
+          onMarkRead: (ids) => chatService.markRead(
+            matchId: row.matchId,
+            currentUserId: row.currentUserId,
+            messageIds: ids,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -361,6 +422,12 @@ class _MatchRow extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      // "Swapped" chip on completed matches — the chat stays in
+                      // the list as the trade record, just flagged as done.
+                      if (row.isCompleted) ...[
+                        const SizedBox(width: 8),
+                        const _SwappedChip(),
+                      ],
                       const SizedBox(width: 8),
                       Text(
                         _formatTimestamp(row.lastMessageTime),
@@ -447,6 +514,41 @@ class _TradePill extends StatelessWidget {
           color: _kTextSecondary,
           height: 1.3,
         ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// _SwappedChip — small green pill marking a completed match
+// ---------------------------------------------------------------------------
+
+class _SwappedChip extends StatelessWidget {
+  const _SwappedChip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: _kGreenSoft,
+        borderRadius: BorderRadius.circular(9999),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.check_circle, size: 11, color: _kGreenDark),
+          SizedBox(width: 3),
+          Text(
+            'Swapped',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: _kGreenDark,
+              height: 1.2,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -9,6 +9,7 @@
 ///      (no "verified", no "active now", no age, no km)
 library;
 
+import 'package:ecoswap/models/incoming_interest.dart';
 import 'package:ecoswap/models/item.dart';
 import 'package:ecoswap/models/user.dart';
 import 'package:ecoswap/screens/discover/discover_screen.dart';
@@ -78,6 +79,7 @@ Widget _wrap(Widget child) {
 Widget _buildScreen({
   List<User>? candidates,
   Map<String, List<Item>>? itemsByUser,
+  Map<String, IncomingInterest> interestMap = const {},
   ValueChanged<SwipeRecord>? onRightSwipe,
   ValueChanged<SwipeRecord>? onLeftSwipe,
   ValueChanged<User>? onCardTap,
@@ -94,6 +96,7 @@ Widget _buildScreen({
           {
             user.uid: [item],
           },
+      interestMap: interestMap,
       proximityBucket: bucket,
       onRightSwipe: onRightSwipe,
       onLeftSwipe: onLeftSwipe,
@@ -423,6 +426,47 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('All Thailand'), findsOneWidget);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // F18 — incoming-interest badge on the candidate's card
+  // -------------------------------------------------------------------------
+
+  group('SwipeCard — incoming interest (F18)', () {
+    testWidgets(
+      'shows "Wants your {item}" badge for a candidate in the interestMap',
+      (tester) async {
+        final user = _makeUser(displayName: 'Cho');
+        await tester.pumpWidget(
+          _buildScreen(
+            candidates: [user],
+            itemsByUser: {
+              user.uid: [_makeItem(name: 'Leather tote bag')],
+            },
+            interestMap: {
+              user.uid: const IncomingInterest(
+                itemId: 'item-9',
+                itemName: 'Cow',
+              ),
+            },
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Wants your Cow'), findsOneWidget);
+        // Candidate identity is still shown (prototype behaviour, not anonymous).
+        expect(find.text('Cho'), findsWidgets);
+      },
+    );
+
+    testWidgets('no badge when the candidate is absent from interestMap', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_buildScreen());
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Wants your'), findsNothing);
     });
   });
 }

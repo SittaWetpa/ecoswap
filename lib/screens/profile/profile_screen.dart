@@ -67,6 +67,9 @@ class ProfileScreen extends StatelessWidget {
   /// Called when the user taps "My items" row.
   final VoidCallback? onMyItems;
 
+  /// Called when the user taps the "How it works" row (replays the tutorial).
+  final VoidCallback? onHowItWorks;
+
   /// Injectable [ImpactService] for the embedded [ImpactStatStrip] (WBS 11.4).
   ///
   /// When `null` (the production default), the strip uses the values
@@ -81,6 +84,7 @@ class ProfileScreen extends StatelessWidget {
     this.userDocReader,
     this.getCurrentUid,
     this.onMyItems,
+    this.onHowItWorks,
     this.impactService,
   });
 
@@ -165,6 +169,7 @@ class ProfileScreen extends StatelessWidget {
                     );
                   },
                   onMyItems: onMyItems,
+                  onHowItWorks: onHowItWorks,
                   onLogout: () => _showLogoutDialog(context, authProvider),
                 );
               },
@@ -182,6 +187,7 @@ class _ProfileBody extends StatelessWidget {
   final String uid;
   final VoidCallback onEdit;
   final VoidCallback? onMyItems;
+  final VoidCallback? onHowItWorks;
   final VoidCallback onLogout;
   final ImpactService? impactService;
 
@@ -190,6 +196,7 @@ class _ProfileBody extends StatelessWidget {
     required this.uid,
     required this.onEdit,
     required this.onMyItems,
+    required this.onHowItWorks,
     required this.onLogout,
     required this.impactService,
   });
@@ -329,6 +336,17 @@ class _ProfileBody extends StatelessWidget {
             ),
           ),
 
+          const SizedBox(height: 12),
+
+          // ── How it works shortcut (replays the first-run tutorial) ────────
+          _ProfileRow(
+            rowKey: const Key('howItWorksRow'),
+            icon: Icons.help_outline,
+            title: 'How it works',
+            subtitle: 'Replay the quick guide',
+            onTap: onHowItWorks,
+          ),
+
           const SizedBox(height: 20),
 
           // ── About / Bio section ───────────────────────────────────────────
@@ -407,6 +425,78 @@ class _ProfileBody extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// _ProfileRow — tappable settings-style row (icon + title + subtitle + chevron)
+// ---------------------------------------------------------------------------
+
+class _ProfileRow extends StatelessWidget {
+  final Key? rowKey;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+
+  const _ProfileRow({
+    this.rowKey,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      key: rowKey,
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _kSurfaceAlt,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: _kSurface,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 20, color: _kGreenPrimary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: _kTextPrimary,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: _kTextSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, size: 18, color: _kTextSecondary),
+          ],
+        ),
       ),
     );
   }

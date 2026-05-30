@@ -240,10 +240,14 @@ void main() {
       },
     );
 
-    // ── Test 5: stream capped at 50 messages renders at least the visible ones ─
+    // ── Test 5: stream capped at 50 messages renders newest-at-bottom ─────────
+    //
+    // Production streams messages ordered by sentAt DESCENDING (newest first),
+    // and the list renders reversed so the newest sits at the bottom and is
+    // visible without scrolling. Older messages are reachable by scrolling up.
 
     testWidgets(
-      '50 messages from the stream: first and last are reachable in the list',
+      '50 messages from the stream: newest is at the bottom, oldest reachable',
       (tester) async {
         tester.view.physicalSize = const Size(400, 2400);
         tester.view.devicePixelRatio = 1.0;
@@ -256,30 +260,30 @@ void main() {
           _buildWithStream(messageStream: controller.stream),
         );
 
-        // Emit exactly 50 messages — the WBS 9.3 cap.
+        // Emit exactly 50 messages — the WBS 9.3 cap — newest first (the
+        // production ordering). "Message 50" is the newest, "Message 1" oldest.
         final batch = List.generate(
           50,
-          (i) => _msg(_kOtherUid, 'Message ${i + 1}', id: 'msg-$i'),
+          (i) => _msg(_kOtherUid, 'Message ${50 - i}', id: 'msg-$i'),
         );
         controller.add(batch);
         await tester.pump();
 
-        // ListView lazily renders, so we verify the list was received by
-        // checking that MessageBubble widgets are present (at least the
-        // visible portion) and that the first item ("Message 1") is shown.
         expect(
           find.byType(MessageBubble),
           findsAtLeastNWidgets(1),
           reason: 'At least some of the 50 messages must be rendered',
         );
-        // The first emitted message should be visible at the top of the list.
-        expect(find.text('Message 1'), findsOneWidget);
-
-        // Scroll to the bottom and verify the last message is reachable.
-        await tester.drag(find.byType(ListView), const Offset(0, -10000));
-        await tester.pump();
-
+        // The newest message is anchored at the bottom and visible initially.
         expect(find.text('Message 50'), findsOneWidget);
+
+        // Scroll up toward the older messages and verify the oldest is reachable.
+        await tester.scrollUntilVisible(
+          find.text('Message 1'),
+          300.0,
+          scrollable: find.byType(Scrollable).first,
+        );
+        expect(find.text('Message 1'), findsOneWidget);
 
         await controller.close();
       },

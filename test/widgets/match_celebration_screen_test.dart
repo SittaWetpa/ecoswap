@@ -225,6 +225,82 @@ void main() {
       listener.dispose();
       await matchesController.close();
     });
+
+    // Scenario: B swipes right on A first, then A swipes right on B. A is the
+    // "later" swiper whose swipe creates the match doc (onSwipeCreated names
+    // the new-swipe's swiper as userA). The celebration must appear for A with
+    // the give/get oriented to A — and mirrored for B.
+    //
+    // `_makeMatch` models exactly this: userAId='uid-me' (A, the completing
+    // swiper), userBId='user-other' (B). userAWantsItemId='item-their'
+    // (A wants B's item), userBWantsItemId='item-my' (B wants A's item).
+    test(
+      'same match resolves to mirrored give/get for the completing swiper (A) '
+      'and the counterparty (B)',
+      () async {
+        final match = _makeMatch(id: 'match-ab');
+        final itemMy = _makeItem(id: 'item-my', name: 'Electric kettle');
+        final itemTheir = _makeItem(
+          id: 'item-their',
+          name: 'Desk lamp',
+          category: ItemCategory.household,
+        );
+
+        // --- A's perspective (the later swiper who completed the match) ---
+        final aController = StreamController<List<match_model.Match>>();
+        final aFetcher = _fakeFetcher(
+          myItem: itemMy,
+          theirItem: itemTheir,
+          otherUser: _makeUser(uid: 'user-other', displayName: 'Fah'),
+        );
+        final aListener = MatchListener(
+          currentUserId: 'uid-me',
+          matchesStreamFactory: (_) => aController.stream,
+          seenLoader: () async => <String>{},
+          seenMarker: (_) async {},
+          docFetcher: (col, id) async => aFetcher(col, id),
+        );
+        aListener.start();
+        final aProposalFuture = aListener.proposals.first;
+        aController.add([match]);
+        final aProposal = await aProposalFuture;
+
+        // A gives their own item (item-my) and gets B's item (item-their).
+        expect(aProposal.otherUser.displayName, 'Fah');
+        expect(aProposal.myItem.name, 'Electric kettle'); // You give
+        expect(aProposal.theirItem.name, 'Desk lamp'); // You get
+
+        aListener.dispose();
+        await aController.close();
+
+        // --- B's perspective (mirror) ---
+        final bController = StreamController<List<match_model.Match>>();
+        final bFetcher = _fakeFetcher(
+          myItem: itemMy,
+          theirItem: itemTheir,
+          otherUser: _makeUser(uid: 'uid-me', displayName: 'Ploy'),
+        );
+        final bListener = MatchListener(
+          currentUserId: 'user-other',
+          matchesStreamFactory: (_) => bController.stream,
+          seenLoader: () async => <String>{},
+          seenMarker: (_) async {},
+          docFetcher: (col, id) async => bFetcher(col, id),
+        );
+        bListener.start();
+        final bProposalFuture = bListener.proposals.first;
+        bController.add([match]);
+        final bProposal = await bProposalFuture;
+
+        // Mirrored: B gives their own item (item-their) and gets A's (item-my).
+        expect(bProposal.otherUser.displayName, 'Ploy');
+        expect(bProposal.myItem.name, 'Desk lamp'); // You give
+        expect(bProposal.theirItem.name, 'Electric kettle'); // You get
+
+        bListener.dispose();
+        await bController.close();
+      },
+    );
   });
 
   // -------------------------------------------------------------------------

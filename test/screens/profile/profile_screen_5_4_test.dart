@@ -62,7 +62,11 @@ final _fixtureUser = app_user.User(
 
 /// Builds [ProfileScreen] with a stubbed reader that emits the fixture user's
 /// JSON map directly — no Firestore sealed classes required.
-Widget _buildProfileScreen({app_user.User? user, VoidCallback? onMyItems}) {
+Widget _buildProfileScreen({
+  app_user.User? user,
+  VoidCallback? onMyItems,
+  VoidCallback? onHowItWorks,
+}) {
   final fakeAuth = _FakeFirebaseAuth();
   final provider = auth_prov.AuthProvider(firebaseAuth: fakeAuth);
 
@@ -79,6 +83,7 @@ Widget _buildProfileScreen({app_user.User? user, VoidCallback? onMyItems}) {
         userDocReader: fakeReader,
         getCurrentUid: () => 'uid-test-001',
         onMyItems: onMyItems,
+        onHowItWorks: onHowItWorks,
       ),
     ),
   );
@@ -186,6 +191,28 @@ void main() {
       await tester.pump();
 
       expect(find.byKey(const Key('logoutButton')), findsOneWidget);
+    });
+
+    testWidgets('"How it works" row is shown and invokes onHowItWorks', (
+      tester,
+    ) async {
+      var tapped = false;
+      await tester.pumpWidget(
+        _buildProfileScreen(
+          user: _fixtureUser,
+          onHowItWorks: () => tapped = true,
+        ),
+      );
+      await tester.pump();
+
+      final row = find.byKey(const Key('howItWorksRow'));
+      expect(row, findsOneWidget);
+      expect(find.text('How it works'), findsOneWidget);
+
+      await tester.ensureVisible(row);
+      await tester.tap(row);
+      await tester.pump();
+      expect(tapped, isTrue);
     });
 
     // All 6 fields in one test — display name, district, 3 impact stats, bio

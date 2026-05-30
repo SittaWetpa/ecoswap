@@ -183,32 +183,52 @@ class ImpactDashboardScreen extends StatelessWidget {
         ...?lastA?.docs,
         ...?lastB?.docs,
       ];
-      final rows = await Future.wait(docs.map((d) => _resolveTradeRow(d, uid)));
-      rows.sort((x, y) {
-        final ax = x.completedAt;
-        final ay = y.completedAt;
-        if (ax == null && ay == null) return 0;
-        if (ax == null) return 1;
-        if (ay == null) return -1;
-        return ay.compareTo(ax);
-      });
-      ctrl.add(rows.take(10).toList());
+      try {
+        final rows = await Future.wait(
+          docs.map((d) => _resolveTradeRow(d, uid)),
+        );
+        rows.sort((x, y) {
+          final ax = x.completedAt;
+          final ay = y.completedAt;
+          if (ax == null && ay == null) return 0;
+          if (ax == null) return 1;
+          if (ay == null) return -1;
+          return ay.compareTo(ax);
+        });
+        if (!ctrl.isClosed) ctrl.add(rows.take(10).toList());
+      } catch (e, st) {
+        // Resolving an item/user doc failed — surface it instead of spinning.
+        if (!ctrl.isClosed) ctrl.addError(e, st);
+      }
     }
 
     final subs = <StreamSubscription>[];
     ctrl = StreamController<List<TradeRowData>>(
       onListen: () {
+        // Forward source-query errors (e.g. a missing composite index) to the
+        // controller. Without this, an errored query leaves the StreamBuilder
+        // stuck on its loading spinner forever — it never sees the error.
         subs.add(
-          asAStream.listen((s) {
-            lastA = s;
-            emit();
-          }),
+          asAStream.listen(
+            (s) {
+              lastA = s;
+              emit();
+            },
+            onError: (Object e, StackTrace st) {
+              if (!ctrl.isClosed) ctrl.addError(e, st);
+            },
+          ),
         );
         subs.add(
-          asBStream.listen((s) {
-            lastB = s;
-            emit();
-          }),
+          asBStream.listen(
+            (s) {
+              lastB = s;
+              emit();
+            },
+            onError: (Object e, StackTrace st) {
+              if (!ctrl.isClosed) ctrl.addError(e, st);
+            },
+          ),
         );
       },
       onCancel: () async {
