@@ -194,7 +194,8 @@ class _TutorialScreenState extends State<TutorialScreen> {
                 controller: _controller,
                 itemCount: _kSlides.length,
                 onPageChanged: (i) => setState(() => _page = i),
-                itemBuilder: (context, index) => _SlideView(slide: _kSlides[index]),
+                itemBuilder: (context, index) =>
+                    _SlideView(slide: _kSlides[index]),
               ),
             ),
             // Page dots

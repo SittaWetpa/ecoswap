@@ -195,26 +195,27 @@ void main() {
       );
     });
 
-    testWidgets('"Exchange" button is shown with unevenly distributed messages', (
-      tester,
-    ) async {
-      // 4 mine, 1 theirs — would have failed the old ≥3-each gate.
-      final messages = [
-        _msg(_kCurrentUid, 'Msg 1', index: 0),
-        _msg(_kCurrentUid, 'Msg 2', index: 1),
-        _msg(_kCurrentUid, 'Msg 3', index: 2),
-        _msg(_kCurrentUid, 'Msg 4', index: 3),
-        _msg(_kOtherUid, 'Their only message', index: 4),
-      ];
+    testWidgets(
+      '"Exchange" button is shown with unevenly distributed messages',
+      (tester) async {
+        // 4 mine, 1 theirs — would have failed the old ≥3-each gate.
+        final messages = [
+          _msg(_kCurrentUid, 'Msg 1', index: 0),
+          _msg(_kCurrentUid, 'Msg 2', index: 1),
+          _msg(_kCurrentUid, 'Msg 3', index: 2),
+          _msg(_kCurrentUid, 'Msg 4', index: 3),
+          _msg(_kOtherUid, 'Their only message', index: 4),
+        ];
 
-      await tester.pumpWidget(_buildScreen(messages: messages));
+        await tester.pumpWidget(_buildScreen(messages: messages));
 
-      expect(
-        find.text('Exchange'),
-        findsOneWidget,
-        reason: '"Exchange" button must not be gated by message counts',
-      );
-    });
+        expect(
+          find.text('Exchange'),
+          findsOneWidget,
+          reason: '"Exchange" button must not be gated by message counts',
+        );
+      },
+    );
 
     // ── Test 4: tapping "Exchange" invokes onReadyExchange ───────────────────
 
@@ -251,7 +252,10 @@ void main() {
         expect(find.text('See you at the desk'), findsOneWidget);
 
         // Completion banner is shown.
-        expect(find.text('Swap completed — this trade is done.'), findsOneWidget);
+        expect(
+          find.text('Swap completed — this trade is done.'),
+          findsOneWidget,
+        );
 
         // The Exchange CTA is replaced by a static "Swapped" indicator.
         expect(find.text('Exchange'), findsNothing);

@@ -33,9 +33,7 @@ Widget _wrap(
     routes: {
       // Echo the route argument so tests can assert the tradeId that was passed.
       '/qr/confirmed': (ctx) => Scaffold(
-        body: Text(
-          'Swap Confirmed:${ModalRoute.of(ctx)?.settings.arguments}',
-        ),
+        body: Text('Swap Confirmed:${ModalRoute.of(ctx)?.settings.arguments}'),
       ),
       ...?extraRoutes,
     },

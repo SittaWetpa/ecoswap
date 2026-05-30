@@ -153,9 +153,8 @@ class _MainShellState extends State<MainShell> {
       await Navigator.of(context).push<void>(
         MaterialPageRoute<void>(
           fullscreenDialog: true,
-          builder: (_) => TutorialScreen(
-            onDone: () => Navigator.of(context).maybePop(),
-          ),
+          builder: (_) =>
+              TutorialScreen(onDone: () => Navigator.of(context).maybePop()),
         ),
       );
       await markTutorialSeen();

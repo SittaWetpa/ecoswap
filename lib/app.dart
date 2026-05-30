@@ -58,8 +58,7 @@ class EcoSwapApp extends StatelessWidget {
       // WBS 10.6 — Swap Confirmed. Route argument is a tradeId (String); both
       // CTAs pop back to the shell (the QR flow sits on top of it).
       kQRConfirmedRoute: (context) {
-        final tradeId =
-            ModalRoute.of(context)?.settings.arguments as String?;
+        final tradeId = ModalRoute.of(context)?.settings.arguments as String?;
         return SwapConfirmedScreen(
           tradeId: tradeId,
           // Pop the QR flow off the shell, then ask the shell to switch tabs:

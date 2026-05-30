@@ -128,7 +128,11 @@ void main() {
 
       controller.add([
         _fakeItem(id: 'active1', name: 'Active Book'),
-        _fakeItem(id: 'traded1', name: 'Traded Book', status: ItemStatus.traded),
+        _fakeItem(
+          id: 'traded1',
+          name: 'Traded Book',
+          status: ItemStatus.traded,
+        ),
       ]);
       await tester.pump();
 
