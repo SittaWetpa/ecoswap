@@ -138,63 +138,19 @@ jobs:
             "cd functions && npm run test:rules:ci"
 
   # ─────────────────────────────────────────────────────────────────
-  # 4. End-to-end integration test (WBS 12.1)
-  # Only on PR to main and push to main — too slow for every branch push
+  # 4. End-to-end integration test (WBS 12.1) — DISABLED for now
+  #
+  # This previously ran `flutter test -d linux integration_test/` against the
+  # emulator suite. It was removed because the project targets Android only at
+  # this stage, and the Linux-desktop runner was only ever a stand-in — it
+  # needed the native GTK/CMake toolchain plus a headless display (xvfb) just
+  # to launch, none of which reflects how the app actually ships.
+  #
+  # The integration_test/ Dart suites are kept in the repo. When integration
+  # coverage is back in scope, reintroduce WBS 12.1 as an Android job using an
+  # emulator action (e.g. reactivecircus/android-emulator-runner) and add it
+  # back to deploy-dev's `needs`.
   # ─────────────────────────────────────────────────────────────────
-  integration-test:
-    name: Integration test (WBS 12.1)
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
-    needs: [flutter-analyze-and-test, functions-build-and-test]
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
-
-      - name: Install Firebase CLI
-        run: npm install -g firebase-tools
-
-      - name: Flutter pub get
-        run: flutter pub get
-
-      - name: Build Cloud Functions
-        working-directory: functions
-        run: |
-          npm ci
-          npm run build
-
-      # `flutter test -d linux` builds a Linux desktop runner, which needs the
-      # native desktop toolchain (CMake/Ninja/GTK/pkg-config). subosito/flutter-action
-      # installs the Flutter SDK but not these OS-level deps, so the build failed
-      # with "CMake Error ... FindPkgConfig ... Unable to generate build files".
-      - name: Install Linux desktop build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ninja-build libgtk-3-dev pkg-config clang cmake liblzma-dev xvfb
-          flutter config --enable-linux-desktop
-
-      # The Linux desktop app is GTK-based and needs a display to launch. CI
-      # runners are headless ("Unable to start the app on the device" / "log
-      # reader stopped"), so run the whole thing under a virtual framebuffer.
-      - name: Run integration test against emulator suite
-        run: |
-          xvfb-run -a firebase emulators:exec \
-            --only auth,firestore,functions,storage \
-            --project ecoswap-ci \
-            "flutter test -d linux integration_test/"
 
   # ─────────────────────────────────────────────────────────────────
   # 5. Build debug APK as artifact — on every PR and push to main
@@ -258,7 +214,7 @@ jobs:
     name: Deploy to dev Firebase
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [flutter-analyze-and-test, functions-build-and-test, firestore-rules-test, integration-test]
+    needs: [flutter-analyze-and-test, functions-build-and-test, firestore-rules-test]
     environment: dev
     steps:
       - uses: actions/checkout@v4
