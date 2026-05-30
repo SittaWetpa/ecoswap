@@ -28,6 +28,8 @@ node_modules/
 .firebase/
 firebase-debug.log
 firebase-debug.*.log
+firestore-debug.log
+**/firestore-debug.log
 .firebaserc
 
 # Secrets — never commit
@@ -35,6 +37,9 @@ firebase-debug.*.log
 .env.*
 *.pem
 *.key
+
+# Android build cache
+android/.kotlin/
 
 # IDE / OS
 .idea/

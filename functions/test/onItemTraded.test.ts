@@ -257,6 +257,42 @@ describe("WBS 8.5 — onItemTraded", () => {
     expect((await db.collection("swipes").doc("s5").get()).exists).toBe(true);
   });
 
+  test("the two mutual swipes that formed the completing match are swept (enables post-trade re-discovery, product decision #3)", async () => {
+    // Regression guard for product decision #3: after a completed trade, the
+    // two swappers must be able to rediscover each other in Discover. The
+    // feed excludes already-swiped users, so re-discovery depends on the
+    // match-forming swipe docs being deleted when the trade completes.
+    //
+    // Match alice_bob: alice (A) wanted bob's itemX; bob (B) wanted alice's
+    // itemY. So the forming swipes are alice->bob (desiredItemId itemX) and
+    // bob->alice (desiredItemId itemY). The trade flips BOTH items to
+    // 'traded', firing onItemTraded once per item; each fire sweeps the
+    // swipe whose desiredItemId is that item.
+    const db = getFirestore();
+
+    await db.collection("swipes").doc("sAB").set(swipeDoc("alice", "bob", "itemX"));
+    await db.collection("swipes").doc("sBA").set(swipeDoc("bob", "alice", "itemY"));
+    await db
+      .doc("matches/alice_bob")
+      .set(matchDoc("alice", "bob", "itemX", "itemY", { status: "completed" }));
+    await db
+      .collection("trades")
+      .doc("T1")
+      .set(tradeDoc("alice_bob", "itemY", "itemX"));
+
+    // itemY (alice's) trades -> sweeps bob's swipe (desiredItemId itemY).
+    const itemY = itemDoc("alice", { name: "Denim Jacket" });
+    await handleItemTraded(itemY, { ...itemY, status: "traded" }, "itemY");
+    // itemX (bob's) trades -> sweeps alice's swipe (desiredItemId itemX).
+    const itemX = itemDoc("bob", { name: "Wool Scarf" });
+    await handleItemTraded(itemX, { ...itemX, status: "traded" }, "itemX");
+
+    // Both forming swipes are gone -> neither user excludes the other in the
+    // feed anymore, so they can rematch if they still have active items.
+    expect((await db.collection("swipes").doc("sAB").get()).exists).toBe(false);
+    expect((await db.collection("swipes").doc("sBA").get()).exists).toBe(false);
+  });
+
   test("the OTHER party of a cancelled match gets a notification", async () => {
     // carol's match referenced alice's itemY (carol wanted it). When itemY
     // trades to bob, carol's match is cancelled and CAROL — not alice — is

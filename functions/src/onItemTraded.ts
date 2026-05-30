@@ -160,9 +160,17 @@ export async function handleItemTraded(
     writeCount++;
   }
 
-  // Delete every pending right-swipe referencing this item. These users
-  // never got a match (no reciprocal yet) so there's no notification owed
-  // here — the item simply vanishes from their feed.
+  // Delete every right-swipe referencing this item. For users who never got
+  // a reciprocal match the item simply vanishes from their feed (no
+  // notification owed). Crucially this ALSO removes the two mutual swipes
+  // that formed the COMPLETING match: both parties' swipes declared exactly
+  // the items being traded (userAWantsItemId / userBWantsItemId), so once
+  // those items flip to 'traded' their swipe docs are swept here. That is
+  // what lets the two swappers rediscover each other in Discover after a
+  // completed trade (product decision #3) — the feed excludes already-swiped
+  // users, and clearing the swipe makes the counterparty eligible again
+  // (still gated by them having an active item). Do NOT add a filter that
+  // skips matched swipes; it would silently disable post-trade re-discovery.
   for (const doc of pendingSwipes.docs) {
     batch.delete(doc.ref);
     writeCount++;
