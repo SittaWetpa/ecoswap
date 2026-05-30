@@ -183,12 +183,15 @@ jobs:
       - name: Install Linux desktop build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build libgtk-3-dev pkg-config clang cmake liblzma-dev
+          sudo apt-get install -y ninja-build libgtk-3-dev pkg-config clang cmake liblzma-dev xvfb
           flutter config --enable-linux-desktop
 
+      # The Linux desktop app is GTK-based and needs a display to launch. CI
+      # runners are headless ("Unable to start the app on the device" / "log
+      # reader stopped"), so run the whole thing under a virtual framebuffer.
       - name: Run integration test against emulator suite
         run: |
-          firebase emulators:exec \
+          xvfb-run -a firebase emulators:exec \
             --only auth,firestore,functions,storage \
             --project ecoswap-ci \
             "flutter test -d linux integration_test/"
