@@ -21,6 +21,7 @@ import 'package:ecoswap/models/incoming_interest.dart';
 import 'package:ecoswap/models/item.dart';
 import 'package:ecoswap/models/user.dart' as app;
 import 'package:ecoswap/providers/auth_provider.dart';
+import 'package:ecoswap/screens/discover/discover_refresh_signal.dart';
 import 'package:ecoswap/screens/discover/discover_screen.dart';
 import 'package:ecoswap/screens/discover/user_detail_screen.dart';
 import 'package:ecoswap/services/feed_service.dart';
@@ -110,6 +111,25 @@ class _DiscoverTabState extends State<DiscoverTab> {
   void initState() {
     super.initState();
     _initBucketAndLoad();
+    // Re-query the feed whenever the shell re-selects the Discover tab. The
+    // IndexedStack keeps this widget alive, so without this the deck would
+    // stay frozen on its first load and never surface users who became
+    // eligible again (e.g. after a completed trade — post-trade re-discovery,
+    // product decision #3).
+    discoverRefreshTick.addListener(_onRefreshRequested);
+  }
+
+  /// Silent reload triggered by [discoverRefreshTick]. Keeps the current deck
+  /// on screen (no full-screen spinner) while the new candidates load.
+  void _onRefreshRequested() {
+    if (!mounted) return;
+    _loadFeed(silent: true);
+  }
+
+  @override
+  void dispose() {
+    discoverRefreshTick.removeListener(_onRefreshRequested);
+    super.dispose();
   }
 
   /// Reads the persisted bucket from [SharedPreferences], then loads the feed.
@@ -121,9 +141,13 @@ class _DiscoverTabState extends State<DiscoverTab> {
   }
 
   /// Fetches candidates and their active items, then refreshes the UI.
-  Future<void> _loadFeed() async {
+  ///
+  /// When [silent] is true the current deck stays on screen while the new
+  /// candidates load (no full-screen spinner) — used for the tab-reselect
+  /// refresh so re-entering Discover doesn't flash a loading state.
+  Future<void> _loadFeed({bool silent = false}) async {
     setState(() {
-      _isLoading = true;
+      if (!silent) _isLoading = true;
       _error = null;
     });
 

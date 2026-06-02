@@ -355,35 +355,50 @@ class ProximityPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The chip stays visually compact (matching the prototype), but the
+    // tappable area is expanded to a 48dp minimum so it meets the Android
+    // tap-target accessibility guideline. HitTestBehavior.opaque makes the
+    // surrounding padding part of the hit area.
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: _kGreenSoft,
-          borderRadius: BorderRadius.circular(9999),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.location_on_outlined,
-              size: 12,
-              color: _kGreenDark,
+      behavior: HitTestBehavior.opaque,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 48),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: _kGreenSoft,
+              borderRadius: BorderRadius.circular(9999),
             ),
-            const SizedBox(width: 4),
-            Text(
-              proximityLabel(bucket),
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: _kGreenDark,
-                height: 1.3,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.location_on_outlined,
+                  size: 12,
+                  color: _kGreenDark,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  proximityLabel(bucket),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: _kGreenDark,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.keyboard_arrow_down,
+                  size: 12,
+                  color: _kGreenDark,
+                ),
+              ],
             ),
-            const SizedBox(width: 4),
-            const Icon(Icons.keyboard_arrow_down, size: 12, color: _kGreenDark),
-          ],
+          ),
         ),
       ),
     );

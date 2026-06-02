@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import '../../models/message.dart';
+import 'package:ecoswap/models/message.dart';
 import '../../services/chat_service.dart';
 import '../../widgets/qr_role_pick_modal.dart';
 

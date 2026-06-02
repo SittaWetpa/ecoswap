@@ -19,9 +19,10 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/match_listener.dart';
 import '../discover/discover_tab.dart';
+import '../discover/discover_refresh_signal.dart';
 import '../chats/match_list_screen.dart';
 import '../impact/impact_dashboard_screen.dart';
-import '../match/match_celebration_screen.dart';
+import 'package:ecoswap/screens/match/match_celebration_screen.dart';
 import '../profile/profile_screen.dart';
 import '../items/my_items_screen.dart';
 import '../items/upload_item_screen.dart';
@@ -266,6 +267,19 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
+  /// Handles a bottom-nav tap. Switching to (or re-tapping) the Discover tab
+  /// bumps [discoverRefreshTick] so the deck re-queries its feed — without
+  /// this the IndexedStack keeps the tab alive and the feed stays frozen on
+  /// its initial load, hiding users who became eligible again after a trade.
+  void _onNavTap(int index) {
+    // Only refresh when actually switching TO Discover from another tab — not
+    // when re-tapping the already-active tab. Each refresh is a full feed
+    // re-query (whole users collection + per-candidate item reads), so this
+    // guard avoids redundant reads from repeated taps.
+    if (index == 0 && _selectedIndex != 0) discoverRefreshTick.value++;
+    setState(() => _selectedIndex = index);
+  }
+
   Widget _tabScreen(int index) {
     if (widget.tabOverrides != null &&
         widget.tabOverrides!.containsKey(index)) {
@@ -301,7 +315,7 @@ class _MainShellState extends State<MainShell> {
       ),
       bottomNavigationBar: _BottomNav(
         selectedIndex: _selectedIndex,
-        onTap: (i) => setState(() => _selectedIndex = i),
+        onTap: _onNavTap,
         bottomPadding: mediaQuery.padding.bottom,
       ),
     );

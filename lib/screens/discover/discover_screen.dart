@@ -91,41 +91,57 @@ class SwipeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        clipBehavior: Clip.hardEdge,
-        decoration: BoxDecoration(
-          color: _kSurface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _kBorder),
-          boxShadow: const [
-            BoxShadow(
-              // shadow-card: 0 1px 3px rgba(0,0,0,0.06)
-              color: Color(0x0F000000),
-              blurRadius: 3,
-              offset: Offset(0, 1),
+    // Photo:info split mirrors the prototype (discover.jsx line 13): 52/48
+    // normally, growing to 60/40 in incoming-interest mode so the green
+    // "Wants your X" badge has room to breathe.
+    final bool hasInterest = incomingInterest != null;
+    final int photoFlex = hasInterest ? 60 : 52;
+    final int infoFlex = hasInterest ? 40 : 48;
+    // MergeSemantics collapses the card into a single tappable node that
+    // carries a label (the merged name/district/item text) and the button
+    // role — so screen readers announce it as one actionable card and it
+    // satisfies the labeled-tap-target accessibility guideline (the bare
+    // GestureDetector node had a tap action but no label).
+    return MergeSemantics(
+      child: Semantics(
+        button: true,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            clipBehavior: Clip.hardEdge,
+            decoration: BoxDecoration(
+              color: _kSurface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: _kBorder),
+              boxShadow: const [
+                BoxShadow(
+                  // shadow-card: 0 1px 3px rgba(0,0,0,0.06)
+                  color: Color(0x0F000000),
+                  blurRadius: 3,
+                  offset: Offset(0, 1),
+                ),
+              ],
             ),
-          ],
-        ),
-        // Column with Expanded children so the 52/48 split fills the card.
-        // The outer Container has clipBehavior: Clip.hardEdge so any pixel
-        // rounding overflow is silently clipped rather than reported.
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              flex: 52,
-              child: _PhotoSection(
-                user: user,
-                incomingInterest: incomingInterest,
-              ),
+            // Column with Expanded children so the photo/info split fills the
+            // card. The outer Container has clipBehavior: Clip.hardEdge so any
+            // pixel rounding overflow is silently clipped rather than reported.
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  flex: photoFlex,
+                  child: _PhotoSection(
+                    user: user,
+                    incomingInterest: incomingInterest,
+                  ),
+                ),
+                Expanded(
+                  flex: infoFlex,
+                  child: _InfoSection(user: user, items: items),
+                ),
+              ],
             ),
-            Expanded(
-              flex: 48,
-              child: _InfoSection(user: user, items: items),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -254,57 +270,44 @@ class _InfoSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Stack layout: name+district pinned top-left, items row pinned bottom.
-    // This avoids any Column overflow assertion while still matching the
-    // prototype's visual structure.
+    // Column layout matching the prototype info section (discover.jsx 108-136):
+    // name + district at the top, then the items block which expands to fill
+    // the remaining height. The thumbnails (inside _ItemsRow) take that
+    // available height rather than forcing height == width — so a single item
+    // no longer balloons into a full-width square that overflows the section
+    // and hides the name. Expanding the items block also guarantees the Column
+    // is fully bounded, so there is no overflow.
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Name + district at the top
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  user.displayName.isNotEmpty ? user.displayName : 'Unknown',
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w600,
-                    color: _kTextPrimary,
-                    height: 1.3,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                // District caption under name — matches prototype info section
-                Text(
-                  _districtLabel(user.homeDistrict),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                    color: _kTextSecondary,
-                    height: 1.4,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+          Text(
+            user.displayName.isNotEmpty ? user.displayName : 'Unknown',
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              color: _kTextPrimary,
+              height: 1.3,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-
-          // Items row pinned to bottom
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: _ItemsRow(items: items),
+          const SizedBox(height: 2),
+          // District caption under name — matches prototype info section
+          Text(
+            _districtLabel(user.homeDistrict),
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+              color: _kTextSecondary,
+              height: 1.4,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
+          const SizedBox(height: 12),
+          Expanded(child: _ItemsRow(items: items)),
         ],
       ),
     );
@@ -330,17 +333,23 @@ class _ItemsRow extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(
-              'Swapping ${items.length} ${items.length == 1 ? 'item' : 'items'}',
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: _kTextTertiary,
-                letterSpacing: 0.5,
-                height: 1.3,
+            // Flexible so a long label truncates instead of overflowing the
+            // row (the "tap to see all" affordance always stays visible).
+            Expanded(
+              child: Text(
+                'Swapping ${items.length} ${items.length == 1 ? 'item' : 'items'}',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: _kTextTertiary,
+                  letterSpacing: 0.5,
+                  height: 1.3,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            const Spacer(),
+            const SizedBox(width: 8),
             const Text(
               'tap to see all',
               style: TextStyle(
@@ -353,39 +362,51 @@ class _ItemsRow extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            ...displayItems.map(
-              (item) => Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: _ItemThumb(item: item),
+        // Thumbnails fill the remaining height of the info section. Each
+        // occupies an equal share of the width (Expanded) and is cover-cropped
+        // to that box, so 1 item → one wide thumbnail, 2 → two ~squares, 3 →
+        // three narrower ones — never taller than the space allows.
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ...displayItems.map(
+                (item) => Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: _ItemThumb(item: item),
+                  ),
                 ),
               ),
-            ),
-            if (extra > 0)
-              SizedBox(
-                width: 60,
-                child: AspectRatio(
-                  aspectRatio: 1,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: _kSurfaceAlt,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      '+$extra',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: _kTextSecondary,
+              if (extra > 0)
+                SizedBox(
+                  width: 60,
+                  // Top-align the "+N" square so it lines up with the top of
+                  // the thumbnails (prototype: alignSelf 'flex-start').
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: AspectRatio(
+                      aspectRatio: 1,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: _kSurfaceAlt,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '+$extra',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: _kTextSecondary,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ],
     );
@@ -403,37 +424,28 @@ class _ItemThumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Image fills the available box (its column width × the height handed
+    // down by the Expanded items row) and is cover-cropped — mirroring the
+    // prototype's height-capped `width:100%` thumbnail. The caption sits
+    // below at a fixed height; Expanded on the image absorbs the rest so the
+    // column is always bounded (no overflow).
+    final Widget image = item.photoUrl.isNotEmpty
+        ? Image.network(
+            item.photoUrl,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (_, e, st) => _thumbPlaceholder(),
+          )
+        : _thumbPlaceholder();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: SizedBox(
-            height: 80,
-            child: item.photoUrl.isNotEmpty
-                ? Image.network(
-                    item.photoUrl,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    errorBuilder: (_, e, st) => Container(
-                      color: _kSurfaceAlt,
-                      alignment: Alignment.center,
-                      child: const Icon(
-                        Icons.image_outlined,
-                        size: 20,
-                        color: _kTextTertiary,
-                      ),
-                    ),
-                  )
-                : Container(
-                    color: _kSurfaceAlt,
-                    alignment: Alignment.center,
-                    child: const Icon(
-                      Icons.image_outlined,
-                      size: 20,
-                      color: _kTextTertiary,
-                    ),
-                  ),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: SizedBox(width: double.infinity, child: image),
           ),
         ),
         const SizedBox(height: 6),
@@ -449,6 +461,14 @@ class _ItemThumb extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
         ),
       ],
+    );
+  }
+
+  Widget _thumbPlaceholder() {
+    return Container(
+      color: _kSurfaceAlt,
+      alignment: Alignment.center,
+      child: const Icon(Icons.image_outlined, size: 20, color: _kTextTertiary),
     );
   }
 }

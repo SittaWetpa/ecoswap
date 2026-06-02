@@ -83,6 +83,16 @@ class NotSignedInException implements Exception {
 /// instance — same pattern used by [AuthService] and [ItemService].
 typedef UserDocReader = Future<Map<String, dynamic>?> Function(String uid);
 
+/// Typedef for a function that returns a *live stream* of a single user
+/// document by UID.
+///
+/// Emits the document data map on every change, or `null` if the document
+/// does not exist. The default implementation listens to Firestore
+/// `snapshots()`; tests inject a fake stream so they can run without a real
+/// Firestore instance.
+typedef UserDocStreamReader =
+    Stream<Map<String, dynamic>?> Function(String uid);
+
 /// Typedef for resolving the currently signed-in user's UID.
 ///
 /// Returns `null` if no user is signed in. The default implementation reads
@@ -98,6 +108,14 @@ UserDocReader _defaultUserDocReader() {
     if (!snap.exists) return null;
     return snap.data();
   };
+}
+
+UserDocStreamReader _defaultUserDocStreamReader() {
+  return (String uid) => FirebaseFirestore.instance
+      .collection('users')
+      .doc(uid)
+      .snapshots()
+      .map((snap) => snap.exists ? snap.data() : null);
 }
 
 CurrentUidProvider _defaultCurrentUidProvider() {
@@ -118,12 +136,15 @@ CurrentUidProvider _defaultCurrentUidProvider() {
 /// parameters so tests can run without a real Firebase project.
 class ImpactService {
   final UserDocReader _readUserDoc;
+  final UserDocStreamReader _watchUserDoc;
   final CurrentUidProvider _currentUid;
 
   ImpactService({
     UserDocReader? userDocReader,
+    UserDocStreamReader? userDocStreamReader,
     CurrentUidProvider? currentUidProvider,
   }) : _readUserDoc = userDocReader ?? _defaultUserDocReader(),
+       _watchUserDoc = userDocStreamReader ?? _defaultUserDocStreamReader(),
        _currentUid = currentUidProvider ?? _defaultCurrentUidProvider();
 
   /// Returns the current user's impact totals as a single
@@ -149,13 +170,41 @@ class ImpactService {
     }
 
     final data = await _readUserDoc(uid);
-    if (data == null) {
-      // Document doesn't exist (e.g., emulator race, manual deletion). Treat
-      // as cold-start zeros rather than throwing — the dashboard and profile
-      // strip should render gracefully for a brand-new user.
-      return UserImpact.zero;
-    }
+    return _impactFromDoc(data);
+  }
 
+  /// Live-updating variant of [getCurrentUserImpact].
+  ///
+  /// Returns a stream that emits a fresh [UserImpact] every time the
+  /// `/users/{currentUid}` document changes — so the Impact Dashboard's hero
+  /// number and metric cards reflect a freshly-completed trade *without* an
+  /// app refresh. The 10.6 transaction is still the only writer of the
+  /// counters; this just observes them live instead of reading once. CO₂ is
+  /// never recomputed client-side (locked decision, CLAUDE.md).
+  ///
+  /// Emits a [NotSignedInException] as a stream error if no user is signed in.
+  /// Cold-start (missing doc or counter fields) maps to [UserImpact.zero],
+  /// matching [getCurrentUserImpact].
+  Stream<UserImpact> watchCurrentUserImpact() {
+    final uid = _currentUid();
+    if (uid == null || uid.isEmpty) {
+      return Stream<UserImpact>.error(
+        const NotSignedInException(
+          'watchCurrentUserImpact requires a signed-in user.',
+        ),
+      );
+    }
+    return _watchUserDoc(uid).map(_impactFromDoc);
+  }
+
+  /// Maps a raw `/users/{uid}` document map to a [UserImpact].
+  ///
+  /// A `null` map (document missing, e.g. a brand-new user or an emulator
+  /// race) becomes [UserImpact.zero] rather than throwing — both the
+  /// one-shot read and the live stream should render gracefully for a user
+  /// with no trades yet.
+  static UserImpact _impactFromDoc(Map<String, dynamic>? data) {
+    if (data == null) return UserImpact.zero;
     return UserImpact(
       trades: (data['tradesCount'] as num?)?.toInt() ?? 0,
       co2Kg: (data['totalCo2Saved'] as num?)?.toDouble() ?? 0,
