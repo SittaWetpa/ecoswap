@@ -37,7 +37,6 @@ const _kSurface = Color(0xFFFFFFFF);
 const _kSurfaceAlt = Color(0xFFF7F5F0);
 const _kTextPrimary = Color(0xFF1A1A1A);
 const _kTextSecondary = Color(0xFF6B6B66);
-const _kTextTertiary = Color(0xFFA0A09B);
 
 // ---------------------------------------------------------------------------
 // TradeRowData — display-ready data for a single recent trade
@@ -334,10 +333,15 @@ class ImpactDashboardScreen extends StatelessWidget {
       );
     }
 
-    return FutureBuilder<UserImpact>(
-      future: _service.getCurrentUserImpact(),
+    // Live stream (not a one-shot read) so the hero number + metric cards
+    // update the moment the 10.6 transaction increments the counters after a
+    // completed trade — no app refresh required.
+    return StreamBuilder<UserImpact>(
+      key: const Key('impact_counters_stream'),
+      stream: _service.watchCurrentUserImpact(),
       builder: (context, impactSnap) {
-        if (impactSnap.connectionState == ConnectionState.waiting) {
+        if (impactSnap.connectionState == ConnectionState.waiting &&
+            !impactSnap.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
         if (impactSnap.hasError) {
@@ -514,7 +518,9 @@ class HeroCo2Number extends StatelessWidget {
             '$swaps ${swaps == 1 ? 'swap' : 'swaps'} · weight × category CO₂ factor',
             style: const TextStyle(
               fontSize: 12,
-              color: _kTextTertiary,
+              // _kTextSecondary (≈5.2:1 on white) instead of _kTextTertiary
+              // (#A0A0A0 ≈ 2.63:1) so the footnote clears WCAG AA contrast.
+              color: _kTextSecondary,
               height: 1.4,
             ),
             textAlign: TextAlign.center,

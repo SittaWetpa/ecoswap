@@ -10,6 +10,8 @@
 /// at `integration_test/impact_service_test.dart`.
 library;
 
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:ecoswap/services/impact_service.dart';
@@ -169,6 +171,62 @@ void main() {
         throwsA(isA<NotSignedInException>()),
       );
       expect(reader.reads, isEmpty);
+    });
+  });
+
+  group('ImpactService.watchCurrentUserImpact() — live counters', () {
+    test('emits a fresh UserImpact each time the user doc changes', () async {
+      final controller = StreamController<Map<String, dynamic>?>();
+      final service = ImpactService(
+        userDocStreamReader: (_) => controller.stream,
+        currentUidProvider: () => 'uid-ploy',
+      );
+
+      final emissions = <UserImpact>[];
+      final sub = service.watchCurrentUserImpact().listen(emissions.add);
+
+      controller.add({
+        'tradesCount': 1,
+        'totalCo2Saved': 4.5,
+        'totalWasteDiverted': 1.0,
+      });
+      // Simulate the 10.6 transaction incrementing the counters after a trade.
+      controller.add({
+        'tradesCount': 2,
+        'totalCo2Saved': 9.0,
+        'totalWasteDiverted': 2.0,
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      expect(emissions, hasLength(2));
+      expect(emissions.first.co2Kg, 4.5);
+      expect(emissions.last.trades, 2);
+      expect(emissions.last.co2Kg, 9.0);
+
+      await sub.cancel();
+      await controller.close();
+    });
+
+    test('maps a missing user doc to UserImpact.zero', () async {
+      final service = ImpactService(
+        userDocStreamReader: (_) => Stream<Map<String, dynamic>?>.value(null),
+        currentUidProvider: () => 'uid-new',
+      );
+
+      final impact = await service.watchCurrentUserImpact().first;
+      expect(impact, UserImpact.zero);
+    });
+
+    test('emits a NotSignedInException error when no user is signed in', () {
+      final service = ImpactService(
+        userDocStreamReader: (_) => const Stream<Map<String, dynamic>?>.empty(),
+        currentUidProvider: () => null,
+      );
+
+      expect(
+        service.watchCurrentUserImpact(),
+        emitsError(isA<NotSignedInException>()),
+      );
     });
   });
 

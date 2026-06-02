@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ecoswap/models/item.dart';
 import 'package:ecoswap/models/user.dart';
+import 'package:ecoswap/screens/discover/discover_refresh_signal.dart';
 import 'package:ecoswap/screens/discover/discover_screen.dart';
 import 'package:ecoswap/screens/discover/discover_tab.dart';
 import 'package:ecoswap/services/feed_service.dart';
@@ -239,6 +240,43 @@ void main() {
 
         // candidatesForUser should have been called a second time.
         expect(callCount[0], 2);
+      },
+    );
+  });
+
+  // ── Test 4: refresh_tick_triggers_reload (post-trade re-discovery, #3) ────
+
+  group('DiscoverTab — refresh_tick_triggers_reload', () {
+    testWidgets(
+      'candidatesForUser is re-run when discoverRefreshTick bumps (tab reselect)',
+      (tester) async {
+        final callCount = [0];
+        final countingService = _CountingFeedService(
+          callCount: callCount,
+          candidates: [_fakeCandidate],
+        );
+
+        await tester.pumpWidget(
+          _buildTab(
+            feedService: countingService,
+            itemService: _makeItemService(),
+            currentUserFetcher: () async => _fakeMe,
+          ),
+        );
+
+        // Initial load.
+        await tester.pumpAndSettle();
+        expect(callCount[0], 1);
+
+        // Simulate the shell re-selecting the Discover tab.
+        discoverRefreshTick.value++;
+        await tester.pumpAndSettle();
+
+        // The deck silently re-queried — no loading spinner flashed, but the
+        // feed was fetched again so newly-eligible users can surface.
+        expect(callCount[0], 2);
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+        expect(find.byType(DiscoverScreen), findsOneWidget);
       },
     );
   });

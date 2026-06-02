@@ -336,6 +336,49 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
+  // 5b. Card layout regression — a single item must NOT hide the name.
+  //
+  // Before the fix, a 1-item card rendered the thumbnail as a full-width
+  // AspectRatio(1) square that overflowed the info section and covered the
+  // name + "Swapping" label. The card now lets thumbnails fill the available
+  // height instead, so every element stays visible for 1, 2, and 3 items.
+  // -------------------------------------------------------------------------
+
+  group('SwipeCard — item count does not break the info section', () {
+    for (final count in [1, 2, 3, 5]) {
+      testWidgets('name, swap label, and items all render with $count item(s)', (
+        tester,
+      ) async {
+        final user = _makeUser(displayName: 'Ploy');
+        final items = List.generate(
+          count,
+          (i) => _makeItem(id: 'item-$i', name: 'Item $i'),
+        );
+
+        await tester.pumpWidget(
+          _buildScreen(candidates: [user], itemsByUser: {user.uid: items}),
+        );
+        await tester.pumpAndSettle();
+
+        // The name is still visible (was hidden by the oversized thumbnail).
+        expect(find.text('Ploy'), findsOneWidget);
+        // The "Swapping N item(s)" label is present with correct pluralisation.
+        expect(
+          find.text('Swapping $count ${count == 1 ? 'item' : 'items'}'),
+          findsOneWidget,
+        );
+        // First item caption renders; pumpAndSettle would have thrown on any
+        // RenderFlex overflow, so reaching here also asserts no overflow.
+        expect(find.text('Item 0'), findsOneWidget);
+        // 5 items → 3 thumbnails + a "+2" badge.
+        if (count > 3) {
+          expect(find.text('+${count - 3}'), findsOneWidget);
+        }
+      });
+    }
+  });
+
+  // -------------------------------------------------------------------------
   // 6. Empty state shown when candidates list is empty
   // -------------------------------------------------------------------------
 
@@ -467,6 +510,40 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Wants your'), findsNothing);
+    });
+
+    // Regression: a long district name + an incoming-interest badge used to
+    // overlap (two independently-positioned overlays). They now share one
+    // width-constrained row, so both render and neither overflows.
+    testWidgets('long district + interest badge coexist without overflow', (
+      tester,
+    ) async {
+      final user = _makeUser(
+        displayName: 'Cho',
+        districtNameTh: 'เขตทุ่งครุ',
+        districtNameEn: 'Khet Thung Khru',
+        provinceNameEn: 'Bangkok',
+      );
+      await tester.pumpWidget(
+        _buildScreen(
+          candidates: [user],
+          itemsByUser: {
+            user.uid: [_makeItem(name: 'Shirt for cow')],
+          },
+          interestMap: {
+            user.uid: const IncomingInterest(
+              itemId: 'item-9',
+              itemName: 'Bag Luis Vuitton',
+            ),
+          },
+        ),
+      );
+      // pumpAndSettle would throw on any RenderFlex overflow from the overlap.
+      await tester.pumpAndSettle();
+
+      // Both overlays are present: the interest badge and the district pill.
+      expect(find.text('Wants your Bag Luis Vuitton'), findsOneWidget);
+      expect(find.textContaining('Khet Thung Khru'), findsWidgets);
     });
   });
 }

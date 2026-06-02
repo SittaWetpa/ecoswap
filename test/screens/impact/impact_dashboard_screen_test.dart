@@ -24,12 +24,16 @@ import 'package:ecoswap/services/impact_service.dart';
 /// Firestore. Subclassing keeps the [ImpactDashboardScreen] API surface
 /// unchanged for production code.
 ImpactService _fakeImpactService(UserImpact impact) {
+  final doc = {
+    'tradesCount': impact.trades,
+    'totalCo2Saved': impact.co2Kg,
+    'totalWasteDiverted': impact.wasteKg,
+  };
   return ImpactService(
-    userDocReader: (_) async => {
-      'tradesCount': impact.trades,
-      'totalCo2Saved': impact.co2Kg,
-      'totalWasteDiverted': impact.wasteKg,
-    },
+    userDocReader: (_) async => doc,
+    // The dashboard now watches a live stream of the user doc; emit one value
+    // so the StreamBuilder resolves to the fixed impact without Firebase.
+    userDocStreamReader: (_) => Stream.value(doc),
     currentUidProvider: () => 'uid-test',
   );
 }
