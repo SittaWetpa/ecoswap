@@ -2,7 +2,7 @@
 
 This file tells Claude Code (and any AI coding assistant) how to work in this repo.
 
-> **For human team members:** read [`docs/TEAM_SETUP_GUIDE.md`](docs/TEAM_SETUP_GUIDE.md) instead. This file is structured for AI consumption.
+> This file is structured for AI consumption. Human onboarding notes are kept outside the repository to avoid exposing contributor identities.
 
 ---
 
@@ -168,7 +168,7 @@ When you open a PR, request a review from your paired reviewer based on the work
 
 If your designated reviewer is genuinely unavailable (sick, in another class, asleep), request a review from any teammate who hasn't authored the PR.
 
-**Auto-assignment via CODEOWNERS:** the file `.github/CODEOWNERS` maps file paths to owners. When you open a PR, GitHub automatically requests review from the owner of any file you touched. **You still need to ping them on Discord** — the auto-request only fires a GitHub notification, which is easy to miss.
+**Reviewer assignment is manual.** Request your paired reviewer (per the table above, by workstream role) via the GitHub "Reviewers" sidebar, then ping them on the team chat. (A `.github/CODEOWNERS` file previously auto-requested reviews by file path, but it was removed to keep contributor identities out of the repository.)
 
 ### Coordinator role
 
@@ -189,19 +189,11 @@ The team coordinates reviews on **Discord**. Set up two things:
    - In GitHub: repo Settings → Webhooks → Add webhook → paste URL, append `/github` to the end, content type `application/json`, select "Let me select individual events" and tick **Pull requests**, **Pull request reviews**, **Pull request review comments**
    - Test by opening a draft PR and confirming Discord posts
 
-**The webhook posts a card but does NOT @-ping anyone.** GitHub and Discord have no shared identity layer — the webhook can't know that GitHub user `@Jedad11` is Discord user `@32+62`. So after the webhook posts, **the PR author manually pings their reviewer in `#pull-requests`** using the Discord tags from the pinned message in that channel.
+**The webhook posts a card but does NOT @-ping anyone.** GitHub and the team chat have no shared identity layer — the webhook can't map a GitHub user to a chat user. So after the webhook posts, **the PR author manually pings their reviewer in `#pull-requests`** using the team's chat tags.
 
-### GitHub handle ↔ Discord tag mapping
+### Reviewer identity mapping
 
-Pinned in `#pull-requests`. Use these tags when @-pinging a reviewer.
-
-| Role | GitHub | Discord |
-|---|---|---|
-| M1 — backend, matching | `@Jedad11` | `@32+62` |
-| M2 — items, chat | `@Vannyyoda` | `@Vannydayo` |
-| M3 — discover, QR client | `@Waltzz62` | `@ohmaohmagod` |
-| M4 — infra, QR backend | `@PausEzi` | `@poshgg` |
-| M5 — testing, docs, coordinator | `@SittaWetpa` | `@KarozRose` |
+The GitHub-handle ↔ chat-tag mapping is **kept privately** (pinned in the `#pull-requests` channel), intentionally **not** stored in this repository so contributor identities aren't exposed if the repo is shared or made public. Refer to the pinned message when @-pinging a reviewer.
 
 Pair rotation: **M1 ↔ M4**, **M2 ↔ M3**, **M5 → workstream pair**.
 
@@ -210,7 +202,7 @@ Pair rotation: **M1 ↔ M4**, **M2 ↔ M3**, **M5 → workstream pair**.
 - **Target: 4 hours from PR open to first review during working hours.** If you open at 10 AM, expect review by 2 PM. Not 6 PM. Not tomorrow.
 - **Working hours** for this team: 9 AM – 7 PM weekdays. PRs opened after 7 PM or on weekends get reviewed next working morning, no SLA.
 - **Ping your reviewer in `#pull-requests`** using their Discord tag from the mapping table above. The webhook auto-posts the PR card; the @-ping is your job.
-- If a review hasn't happened in 4 hours during working hours, ping again. If 24 hours, escalate to M5 (`@KarozRose`).
+- If a review hasn't happened in 4 hours during working hours, ping again. If 24 hours, escalate to M5 (the PR coordinator).
 
 ### What reviewers check
 
@@ -260,8 +252,8 @@ Screenshots: see attached.
 Tests: added widget tests for right-swipe, left-swipe, tap-navigation,
        district format, and out-of-scope element absence.
 
-Reviewer: @Vannyyoda (M2)
-Discord ping: @Vannydayo
+Reviewer: M2 (per the pairing table)
+Chat ping: see the pinned reviewer mapping in #pull-requests
 Deferred to follow-up: SwipeCard animation polish (will address in a
                        separate chore PR after usability testing on Day 7).
 ```
