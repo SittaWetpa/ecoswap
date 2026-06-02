@@ -511,5 +511,39 @@ void main() {
 
       expect(find.textContaining('Wants your'), findsNothing);
     });
+
+    // Regression: a long district name + an incoming-interest badge used to
+    // overlap (two independently-positioned overlays). They now share one
+    // width-constrained row, so both render and neither overflows.
+    testWidgets('long district + interest badge coexist without overflow', (
+      tester,
+    ) async {
+      final user = _makeUser(
+        displayName: 'Cho',
+        districtNameTh: 'เขตทุ่งครุ',
+        districtNameEn: 'Khet Thung Khru',
+        provinceNameEn: 'Bangkok',
+      );
+      await tester.pumpWidget(
+        _buildScreen(
+          candidates: [user],
+          itemsByUser: {
+            user.uid: [_makeItem(name: 'Shirt for cow')],
+          },
+          interestMap: {
+            user.uid: const IncomingInterest(
+              itemId: 'item-9',
+              itemName: 'Bag Luis Vuitton',
+            ),
+          },
+        ),
+      );
+      // pumpAndSettle would throw on any RenderFlex overflow from the overlap.
+      await tester.pumpAndSettle();
+
+      // Both overlays are present: the interest badge and the district pill.
+      expect(find.text('Wants your Bag Luis Vuitton'), findsOneWidget);
+      expect(find.textContaining('Khet Thung Khru'), findsWidgets);
+    });
   });
 }

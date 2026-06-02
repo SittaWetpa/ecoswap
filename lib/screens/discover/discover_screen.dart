@@ -182,21 +182,29 @@ class _PhotoSection extends StatelessWidget {
           ),
         ),
 
-        // District pill. When there's incoming interest the pill moves to the
-        // top-left so the interest badge can own the top-right (prototype).
-        Positioned(
-          top: 12,
-          left: interest != null ? 12 : null,
-          right: interest != null ? null : 12,
-          child: _DistrictPill(homeDistrict: user.homeDistrict),
-        ),
-
-        // F18 — "Wants your {item}" badge, top-right.
+        // Top overlays. With incoming interest, the district pill (left) and
+        // the "Wants your {item}" badge (right) share a single full-width row
+        // so they shrink/ellipsise instead of overlapping — long Thai district
+        // names previously ran under the badge. Without interest, the pill
+        // sits alone at the top-right (prototype).
         if (interest != null)
           Positioned(
             top: 12,
+            left: 12,
             right: 12,
-            child: _InterestBadge(itemName: interest.itemName),
+            child: Row(
+              children: [
+                Flexible(child: _DistrictPill(homeDistrict: user.homeDistrict)),
+                const SizedBox(width: 8),
+                Flexible(child: _InterestBadge(itemName: interest.itemName)),
+              ],
+            ),
+          )
+        else
+          Positioned(
+            top: 12,
+            right: 12,
+            child: _DistrictPill(homeDistrict: user.homeDistrict),
           ),
       ],
     );
