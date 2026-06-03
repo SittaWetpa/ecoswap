@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kReleaseMode;
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
@@ -46,6 +46,15 @@ Future<void> main() async {
 /// Wrapped in try/catch so a transient activation failure never blocks app
 /// startup (a missing token degrades to unverified requests, not a crash).
 Future<void> _activateAppCheck() async {
+  // On web, App Check needs a reCAPTCHA v3 site key. Without one the reCAPTCHA
+  // script throws "Missing required parameters: sitekey" asynchronously (after
+  // activate() returns, so the try/catch below can't see it). Skip activation
+  // entirely when no key was provided — App Check is a hardening layer, not a
+  // startup requirement. Native platforms ignore the key, so this only gates
+  // web.
+  if (kIsWeb && _recaptchaV3SiteKey.isEmpty) {
+    return;
+  }
   try {
     await FirebaseAppCheck.instance.activate(
       androidProvider: kReleaseMode
