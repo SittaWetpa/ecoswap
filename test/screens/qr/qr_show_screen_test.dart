@@ -284,5 +284,68 @@ void main() {
       expect(find.text('Open QR'), findsOneWidget);
       expect(find.byType(QrShowScreen), findsNothing);
     });
+
+    // ── Test 5: DEV-mode raw-token panel shows the JWT ─────────────────────
+    //
+    // With devModeOverride: true the screen renders a copyable raw-JWT panel
+    // (the show-side complement to the scan screen's paste field). The full
+    // token text and a Copy button are present.
+
+    testWidgets('shows the raw JWT panel when DEV mode is on', (tester) async {
+      Future<Map<String, dynamic>> fakeFetcher(String matchId) async {
+        return {'token': 'header.payload.signature', 'expiresAt': 9999999999};
+      }
+
+      Stream<String?> fakeStream(String matchId) =>
+          const Stream<String?>.empty();
+
+      await tester.pumpWidget(
+        _wrap(
+          QrShowScreen(
+            tokenFetcher: fakeFetcher,
+            matchStream: fakeStream,
+            devModeOverride: true,
+          ),
+        ),
+      );
+
+      await _openScreen(tester);
+
+      // The DEV label, the raw token, and a Copy affordance are all present.
+      expect(find.text('DEV — raw token'), findsOneWidget);
+      expect(find.text('header.payload.signature'), findsOneWidget);
+      expect(find.text('Copy'), findsOneWidget);
+    });
+
+    // ── Test 6: raw-token panel is absent in production (DEV mode off) ─────
+    //
+    // The default (devModeOverride: false) must NOT surface the signed token
+    // as text — only the QR encodes it.
+
+    testWidgets('hides the raw JWT panel when DEV mode is off', (tester) async {
+      Future<Map<String, dynamic>> fakeFetcher(String matchId) async {
+        return {'token': 'header.payload.signature', 'expiresAt': 9999999999};
+      }
+
+      Stream<String?> fakeStream(String matchId) =>
+          const Stream<String?>.empty();
+
+      await tester.pumpWidget(
+        _wrap(
+          QrShowScreen(
+            tokenFetcher: fakeFetcher,
+            matchStream: fakeStream,
+            devModeOverride: false,
+          ),
+        ),
+      );
+
+      await _openScreen(tester);
+
+      // QR still renders, but the raw token is never shown as text.
+      expect(find.byType(QrImageView), findsOneWidget);
+      expect(find.text('DEV — raw token'), findsNothing);
+      expect(find.text('header.payload.signature'), findsNothing);
+    });
   });
 }

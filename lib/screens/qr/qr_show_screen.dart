@@ -27,9 +27,25 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../widgets/qr_role_pick_modal.dart' show kQRConfirmedRoute;
+
+// ---------------------------------------------------------------------------
+// Build flag — DEV-MODE raw-token display (mirrors WBS 10.5 on the scan side)
+//
+// Set to true at build time via: flutter run --dart-define=DEV_MODE=true
+// Defaults to false — NEVER true in release builds. The CI build-apk job
+// explicitly passes --dart-define=DEV_MODE=false.
+//
+// When true, a copyable raw-JWT panel appears below the QR so a single-device
+// tester can copy the token and paste it into the scan screen's DEV paste
+// field. Absent in release builds — the signed token is never surfaced as
+// text to real users.
+// ---------------------------------------------------------------------------
+
+const bool kDevMode = bool.fromEnvironment('DEV_MODE');
 
 // ---------------------------------------------------------------------------
 // Design tokens — EcoSwap Style Guide
@@ -135,6 +151,16 @@ class QrShowScreen extends StatefulWidget {
   /// Name of the item the current user is receiving.
   final String? theirItemName;
 
+  /// Test-only override for the [kDevMode] build flag.
+  ///
+  /// When non-null, this value takes precedence over [kDevMode], allowing
+  /// widget tests to exercise both the "flag on" and "flag off" branches of
+  /// the raw-token panel without recompiling with `--dart-define`. Set to
+  /// `true` to show the panel; set to `false` to assert it is absent.
+  ///
+  /// Never pass this in production code — use the build flag instead.
+  final bool? devModeOverride;
+
   const QrShowScreen({
     super.key,
     this.onComplete,
@@ -145,6 +171,7 @@ class QrShowScreen extends StatefulWidget {
     this.partnerPhotoUrl,
     this.myItemName,
     this.theirItemName,
+    this.devModeOverride,
   });
 
   @override
@@ -159,6 +186,12 @@ class _QrShowScreenState extends State<QrShowScreen>
   // ── Token state ───────────────────────────────────────────────────────────
   String? _token; // null = loading / error
   bool _tokenError = false;
+
+  // ── DEV-MODE flag ─────────────────────────────────────────────────────────
+  // In production [widget.devModeOverride] is always null, so [kDevMode] (the
+  // compile-time constant) is used. Widget tests set the override to exercise
+  // both branches without a separate `--dart-define` build.
+  bool get _isDevMode => widget.devModeOverride ?? kDevMode;
 
   // ── Countdown ─────────────────────────────────────────────────────────────
   // Tracks the 30s refresh cycle, not the 60s token expiry: counts 30 → 0 and
@@ -383,6 +416,18 @@ class _QrShowScreenState extends State<QrShowScreen>
                     _QrCard(token: _token, hasError: _tokenError),
                     const SizedBox(height: 16),
 
+                    // ── DEV-MODE raw-token panel ─────────────────────────
+                    //
+                    // Visible ONLY when the app was built with
+                    // --dart-define=DEV_MODE=true (or when devModeOverride:
+                    // true is passed in tests). Lets a single-device tester
+                    // copy the JWT and paste it into the scan screen's DEV
+                    // paste field. Never present in release builds.
+                    if (_isDevMode && _token != null && _token!.isNotEmpty) ...[
+                      _DevModeTokenPanel(token: _token!),
+                      const SizedBox(height: 16),
+                    ],
+
                     // ── Countdown ────────────────────────────────────────
                     _Countdown(
                       seconds: _seconds,
@@ -516,6 +561,107 @@ class _QrError extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// _DevModeTokenPanel — DEV-MODE raw-JWT display with copy button
+//
+// Rendered ONLY when kDevMode is true (--dart-define=DEV_MODE=true). It is the
+// show-side complement to the scan screen's "Or paste code…" field: copy the
+// JWT here, paste it there to validate a swap on a single device.
+//
+// Never present in release builds — the signed token is not surfaced to real
+// users.
+// ---------------------------------------------------------------------------
+
+class _DevModeTokenPanel extends StatefulWidget {
+  final String token;
+
+  const _DevModeTokenPanel({required this.token});
+
+  @override
+  State<_DevModeTokenPanel> createState() => _DevModeTokenPanelState();
+}
+
+class _DevModeTokenPanelState extends State<_DevModeTokenPanel> {
+  bool _copied = false;
+
+  Future<void> _copy() async {
+    await Clipboard.setData(ClipboardData(text: widget.token));
+    if (!mounted) return;
+    setState(() => _copied = true);
+    // Revert the button label after a moment so it can be copied again.
+    Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _copied = false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _kSurfaceAlt,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _kBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.code, size: 14, color: _kWarning),
+              const SizedBox(width: 6),
+              const Expanded(
+                child: Text(
+                  'DEV — raw token',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: _kWarning,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _copy,
+                icon: Icon(
+                  _copied ? Icons.check : Icons.copy,
+                  size: 14,
+                  color: _kGreenPrimary,
+                ),
+                label: Text(
+                  _copied ? 'Copied' : 'Copy',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: _kGreenPrimary,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          // The full JWT — selectable as a fallback to the copy button.
+          SelectableText(
+            widget.token,
+            style: const TextStyle(
+              fontSize: 11,
+              fontFamily: 'monospace',
+              color: _kTextSecondary,
+              height: 1.4,
+            ),
+          ),
+        ],
       ),
     );
   }
