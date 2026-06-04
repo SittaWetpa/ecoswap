@@ -237,7 +237,7 @@ jobs:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
           firebase deploy \
-            --only functions,firestore:rules,storage:rules \
+            --only functions,firestore:rules,storage \
             --project ecoswap-dev-kmutt \
             --token "$FIREBASE_TOKEN" \
             --non-interactive
