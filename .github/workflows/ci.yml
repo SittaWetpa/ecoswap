@@ -238,6 +238,6 @@ jobs:
         run: |
           firebase deploy \
             --only functions,firestore:rules,storage:rules \
-            --project ecoswap-dev \
+            --project ecoswap-dev-kmutt \
             --token "$FIREBASE_TOKEN" \
             --non-interactive
